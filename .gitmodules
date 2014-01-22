@@ -1,3 +1,6 @@
 [submodule "libvanz"]
 	path = libvanz
 	url = https://github.com/guilhermesft/libvanz.git
+[submodule "game"]
+	path = game
+	url = https://github.com/guilhermesft/opengl_game.git
