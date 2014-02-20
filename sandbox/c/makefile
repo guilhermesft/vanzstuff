@@ -1,5 +1,5 @@
 CC=gcc
-CCFLAGS= -Wall
+CCFLAGS= -Wall -g
 
 signal_test:
 	$(CC) $(CCFLAGS) -o signal_test signal_test.c
@@ -9,4 +9,4 @@ fifo:
 	$(CC) $(CCFLAGS) -o fifo_consumer fifo_consumer.c
 
 clean:
-	rm signal_test fifo_productor fifo_consumer
+	rm signal_test fifo_productor fifo_consumer fif fifo

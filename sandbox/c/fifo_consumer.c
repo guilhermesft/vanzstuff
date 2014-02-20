@@ -26,7 +26,7 @@
 #include	<sys/stat.h>
 #include 	<unistd.h>
 
-#define FIFO_FILE "/tmp/fifo"
+#define FIFO_FILE "./fifo"
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -43,6 +43,6 @@ int main ( int argc, char *argv[] )
 	fd = open(FIFO_FILE, O_RDONLY);
 	n = read(fd, msg, 500);
 	msg[n] = '\0';
-	printf("Dados enviados pelo produtori: %s\n", msg);
+	printf("Dados enviados pelo produtor: %s\n", msg);
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */

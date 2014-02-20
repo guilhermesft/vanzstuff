@@ -25,7 +25,7 @@
 #include 	<sys/stat.h>
 #include 	<unistd.h>
 
-#define FIFO_FILE "/temp/fifo" // name of fifo file
+#define FIFO_FILE "./fifo" // name of fifo file
 
 /*
  * ===  FUNCTION  ======================================================================
