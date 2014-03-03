@@ -24,6 +24,9 @@
 #include	<netinet/in.h>
 #include	<stdio.h>
 
+#include	"commom.h"
+#include	"log.h"
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  main
@@ -49,8 +52,26 @@ int main ( int argc, char *argv[] )
 	connection = connect(socket_server, (struct sockaddr*) &server_config, server_size);
 
 	if(connection == -1){
+		logError("Connection not established");
 		perror("Connection error: ");
+		return EXIT_SUCCESS;
 	}
+	logInfo("Connection established");
+
+	//sending a message to the server
+
+	message msg;
+	const char* const text = "Hello server!";
+	msg.msg = text;
+	msg.length = strlen(text);
+
+	ssize_t return_send = send(socket_server, &msg, sizeof(msg), 0);
+
+	if(return_send == -1){
+		perror("Error sending the message: ");
+	}
+
+	logInfo("Sent to server = %s ( %zu bytes)", msg.msg, return_send);
 
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */

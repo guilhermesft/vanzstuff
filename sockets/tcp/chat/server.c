@@ -50,12 +50,14 @@ int main ( int argc, char *argv[] )
 	int retorno_bind = bind(socket_servidor, (struct sockaddr*)&server_config, size_server );
 	if (retorno_bind == -1){
 		perror("Error de bind: ");
+		return -1;
 	}
 
 	int retorno = listen(socket_servidor, 5);
 
 	if(retorno == -1){
 		perror("Erro no listen: ");
+		return -1;
 	}
 
 	size_client = sizeof(client_config);
@@ -63,6 +65,7 @@ int main ( int argc, char *argv[] )
 
 	if(client == -1){
 		perror("Error accept: ");
+		return -1;
 	}else{
 		printf("Client connected :)\n");
 	}
