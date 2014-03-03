@@ -65,6 +65,7 @@ int main ( int argc, char *argv[] )
 	msg.msg = text;
 	msg.length = strlen(text);
 
+
 	ssize_t return_send = send(socket_server, &msg, sizeof(msg), 0);
 
 	if(return_send == -1){

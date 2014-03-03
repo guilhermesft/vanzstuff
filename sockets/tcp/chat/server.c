@@ -25,6 +25,9 @@
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
 
+#include	"log.c"
+#include	"commom.h"
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  main
@@ -37,8 +40,6 @@ int main ( int argc, char *argv[] )
 	socklen_t size_client, size_server;
 	int socket_servidor;
 
-//	char * buffer;
-//	buffer = malloc(sizeof(char)*100);
 	socket_servidor = socket(PF_INET, SOCK_STREAM, 0); //Create the socket
 
 	memset((struct sockaddr_in *) &(server_config), 0, sizeof(server_config)); //clean memory
@@ -68,6 +69,16 @@ int main ( int argc, char *argv[] )
 		return -1;
 	}else{
 		printf("Client connected :)\n");
+		message msg;
+		memset(&msg, 0, sizeof(msg));
+		ssize_t recv_bytes = recv(client, &msg, sizeof(msg), 0);
+		if(recv_bytes < 0){
+			logError("Error reading the message");
+			perror("Error reading the message");
+		}else{
+			logInfo("%zu bytes read", recv_bytes);
+			logInfo("Recived: %s ( %zu length)", msg.msg, msg.length);
+		}
 	}
 
 	return EXIT_SUCCESS;

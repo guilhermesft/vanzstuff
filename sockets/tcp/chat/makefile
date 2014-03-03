@@ -6,7 +6,7 @@ all:
 	$(CC) $(CCFLAGS) -o client client.c log.c
 
 debug:
-	$(CC) $(CCFLAGS) -g -o server server.c
+	$(CC) $(CCFLAGS) -g -o server server.c log.c
 	$(CC) $(CCFLAGS) -g -o client client.c log.c
 
 
