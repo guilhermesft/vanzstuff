@@ -20,6 +20,8 @@
 #ifndef COMMOM_HEADER
 #define COMMOM_HEADER
 
+#include <stdlib.h>
+
 /* *
  * message type is used to send a message between server and client side.
  * Its fields:
@@ -28,7 +30,10 @@
  * */
 typedef struct {
 	size_t length;
-	const char * msg;
+	char msg[1];
 } message;
+
+size_t message_byte_size(const message * msg);
+message* create_message(const char* msg_text);
 
 #endif

@@ -69,15 +69,15 @@ int main ( int argc, char *argv[] )
 		return -1;
 	}else{
 		printf("Client connected :)\n");
-		message msg;
-		memset(&msg, 0, sizeof(msg));
-		ssize_t recv_bytes = recv(client, &msg, sizeof(msg), 0);
+		message * msg = malloc(sizeof(message));
+		memset(msg, 0, sizeof(*msg));
+		ssize_t recv_bytes = recv(client, msg, sizeof(msg), 0);
 		if(recv_bytes < 0){
 			logError("Error reading the message");
 			perror("Error reading the message");
 		}else{
 			logInfo("%zu bytes read", recv_bytes);
-			logInfo("Recived: %s ( %zu length)", msg.msg, msg.length);
+			logInfo("Recived: %s ( %zu length)", msg->msg, msg->length);
 		}
 	}
 

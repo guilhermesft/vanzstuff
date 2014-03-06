@@ -60,19 +60,15 @@ int main ( int argc, char *argv[] )
 
 	//sending a message to the server
 
-	message msg;
-	const char* const text = "Hello server!";
-	msg.msg = text;
-	msg.length = strlen(text);
+	message * msg = create_message("Oi server!");
 
-
-	ssize_t return_send = send(socket_server, &msg, sizeof(msg), 0);
+	ssize_t return_send = send(socket_server, msg, message_byte_size(msg), 0);
 
 	if(return_send == -1){
 		perror("Error sending the message: ");
 	}
 
-	logInfo("Sent to server = %s ( %zu bytes)", msg.msg, return_send);
+	logInfo("Sent to server = %s ( %zu bytes)", msg->msg, return_send);
 
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */
