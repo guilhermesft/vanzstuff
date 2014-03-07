@@ -26,9 +26,8 @@ size_t message_byte_size(const message * msg)
 
 message* create_message(const char* msg_text)
 {
-	int msg_length = strlen(msg_text);
-	message* msg = (message*) malloc(sizeof(message) + msg_length + 1);
-	msg->length = msg_length;
+	message* msg = (message*) malloc(sizeof(message));
+	msg->length = strlen(msg_text);
 	strcpy(msg->msg, msg_text);
 	return msg;
 }

@@ -20,6 +20,10 @@
 #ifndef COMMOM_HEADER
 #define COMMOM_HEADER
 
+#define MSG_TEXT_SIZE 100
+#define READ_BLOCK_SIZE 256
+
+
 #include <stdlib.h>
 
 /* *
@@ -30,7 +34,7 @@
  * */
 typedef struct {
 	size_t length;
-	char msg[1];
+	char msg[MSG_TEXT_SIZE];
 } message;
 
 size_t message_byte_size(const message * msg);

@@ -69,6 +69,6 @@ int main ( int argc, char *argv[] )
 	}
 
 	logInfo("Sent to server = %s ( %zu bytes)", msg->msg, return_send);
-
+	free(msg);
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */

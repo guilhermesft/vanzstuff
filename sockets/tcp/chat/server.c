@@ -28,6 +28,7 @@
 #include	"log.c"
 #include	"commom.h"
 
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  main
@@ -69,16 +70,17 @@ int main ( int argc, char *argv[] )
 		return -1;
 	}else{
 		printf("Client connected :)\n");
-		message * msg = malloc(sizeof(message));
-		memset(msg, 0, sizeof(*msg));
-		ssize_t recv_bytes = recv(client, msg, sizeof(msg), 0);
+		message * msg = ( message* ) malloc(sizeof(message));
+		memset(msg, 0, sizeof(*msg)); // clean the memory. Avoid wild pointer! ( old west song )
+		ssize_t recv_bytes = recv(client, msg, READ_BLOCK_SIZE, 0);
 		if(recv_bytes < 0){
 			logError("Error reading the message");
 			perror("Error reading the message");
 		}else{
 			logInfo("%zu bytes read", recv_bytes);
-			logInfo("Recived: %s ( %zu length)", msg->msg, msg->length);
+			logInfo("Recived: %s ( %zu length)", msg->msg, strlen(msg->msg));
 		}
+		free(msg);
 	}
 
 	return EXIT_SUCCESS;
