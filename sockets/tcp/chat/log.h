@@ -26,12 +26,14 @@
 typedef enum {
 	INFO = 0,
 	WARNING,
-	ERROR
+	ERROR,
+	DEBUG
 }LOG_TYPE;
 
 
 void logInfo(const char * const msg, ...);
 void logWarning(const char * const msg, ...);
 void logError(const char * const msg, ...);
+void logDebug(const char * const msg, ...);
 
 #endif

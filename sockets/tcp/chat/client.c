@@ -60,15 +60,16 @@ int main ( int argc, char *argv[] )
 
 	//sending a message to the server
 
-	message * msg = create_message("Oi server!");
+	message * msg = create_message("Oi server! Funcionou porrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrraaaaaaaaaaaaaaaaaaaaa!!!!!!!!!!!!!!!!!!!");
+	void *buffer = malloc( get_message_byte_size(msg) );
+	getBufferToSend(msg, buffer);
+	if(buffer){
+		ssize_t return_send = send(socket_server, buffer, get_message_byte_size(msg) , 0);
 
-	ssize_t return_send = send(socket_server, msg, message_byte_size(msg), 0);
-
-	if(return_send == -1){
-		perror("Error sending the message: ");
+		if(return_send == -1){
+			perror("Error sending the message: ");
+		}
+		logDebug("Message sent");
 	}
-
-	logInfo("Sent to server = %s ( %zu bytes)", msg->msg, return_send);
-	free(msg);
 	return EXIT_SUCCESS;
 }				/* ----------  end of function main  ---------- */

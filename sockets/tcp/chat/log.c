@@ -37,13 +37,16 @@ void logger(LOG_TYPE type, const char * const format, va_list args)
 		case ERROR:
 			log_type_str = "ERROR";
 			break;
+		case DEBUG:
+			log_type_str = "DEBUG";
+			break;
 		default:
 			log_type_str = "INFO";
 	}
-	char * const formatted_msg = malloc(MIN_SIZE_MSG);
+	char * formatted_msg = malloc(MIN_SIZE_MSG);
 	format_string(format, args, formatted_msg);
 	printf("%s - %s\n", log_type_str, formatted_msg);
-	free(formatted_msg);
+	//free(formatted_msg); FIXME - error
 }
 
 void format_string(const char* format, va_list args, char * formatted_strig)
@@ -75,5 +78,13 @@ void logError(const char * const msg, ...)
 	va_list argptr;
 	va_start(argptr,msg);
 	logger(ERROR, msg, argptr);
+	va_end(argptr);
+}
+
+void logDebug(const char * const msg, ...)
+{
+	va_list argptr;
+	va_start(argptr,msg);
+	logger(DEBUG, msg, argptr);
 	va_end(argptr);
 }

@@ -29,13 +29,14 @@
 #include	"commom.h"
 
 
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  main
  *  Description:
  * =====================================================================================
  */
-int main ( int argc, char *argv[] )
+int main (int argc, char *argv[] )
 {
 	struct sockaddr_in server_config, client_config;
 	socklen_t size_client, size_server;
@@ -61,27 +62,28 @@ int main ( int argc, char *argv[] )
 		perror("Erro no listen: ");
 		return -1;
 	}
+	while(1){
+		size_client = sizeof(client_config);
+		int client = accept(socket_servidor, (struct sockaddr*) &client_config , &size_client);
 
-	size_client = sizeof(client_config);
-	int client = accept(socket_servidor, (struct sockaddr*) &client_config , &size_client);
-
-	if(client == -1){
-		perror("Error accept: ");
-		return -1;
-	}else{
-		printf("Client connected :)\n");
-		message * msg = ( message* ) malloc(sizeof(message));
-		memset(msg, 0, sizeof(*msg)); // clean the memory. Avoid wild pointer! ( old west song )
-		ssize_t recv_bytes = recv(client, msg, READ_BLOCK_SIZE, 0);
-		if(recv_bytes < 0){
-			logError("Error reading the message");
-			perror("Error reading the message");
+		if(client == -1){
+			perror("Error accept: ");
+			return -1;
 		}else{
-			logInfo("%zu bytes read", recv_bytes);
-			logInfo("Recived: %s ( %zu length)", msg->msg, strlen(msg->msg));
+			logInfo("Client connected :)");
+			char* buffer = malloc(READ_BLOCK_SIZE);
+			ssize_t recv_bytes = recv(client, buffer, READ_BLOCK_SIZE, 0);
+			if(recv_bytes < 0){
+				logError("Error reading the message");
+				perror("Error reading the message");
+			}else{
+				logDebug("%d BYTES RECIVED", recv_bytes);
+				message * msg = getMsgFromBuffer(buffer);
+				logDebug("MSG = %s", msg->msg);
+				free(msg);
+			}
+			free(buffer);
 		}
-		free(msg);
 	}
-
 	return EXIT_SUCCESS;
-}				/* ----------  end of function main  ---------- */
+}

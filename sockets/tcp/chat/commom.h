@@ -3,7 +3,7 @@
  *
  *       Filename:  commom.h
  *
- *    Description: Common structure in both server and client side.
+ *    Description: Common struct and functions in both server and client side.
  *
  *        Version:  1.0
  *        Created:  02/27/2014 08:37:00 AM
@@ -21,7 +21,7 @@
 #define COMMOM_HEADER
 
 #define MSG_TEXT_SIZE 100
-#define READ_BLOCK_SIZE 256
+#define READ_BLOCK_SIZE 512
 
 
 #include <stdlib.h>
@@ -34,10 +34,28 @@
  * */
 typedef struct {
 	size_t length;
-	char msg[MSG_TEXT_SIZE];
+	char *msg;
 } message;
 
-size_t message_byte_size(const message * msg);
+size_t get_message_byte_size(const message * msg);
 message* create_message(const char* msg_text);
+
+void prepareMsgBufferToSend (char *buffer, const message * msg);
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  getMsgFromBuffer
+ *  Description: Convert a chat buffer with bytes recived from socket to a message pointer
+ * =====================================================================================
+ */
+message* getMsgFromBuffer ( const char* buffer);
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  getBufferToSend
+ *  Description:  Generate a buffer to send
+ * =====================================================================================
+ */
+void getBufferToSend ( const message * msg, void* buffer );
 
 #endif
