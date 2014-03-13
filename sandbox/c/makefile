@@ -8,5 +8,9 @@ fifo:
 	$(CC) $(CCFLAGS) -o fifo_productor fifo_productor.c
 	$(CC) $(CCFLAGS) -o fifo_consumer fifo_consumer.c
 
+bit_operation:
+	$(CC) $(CCFLAGS) -o bit_operation bit_operations.c
+
+
 clean:
-	rm signal_test fifo_productor fifo_consumer fif fifo
+	rm signal_test fifo_productor fifo_consumer fif fifo bit_operation
