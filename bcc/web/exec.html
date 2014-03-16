@@ -1,0 +1,77 @@
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>
+	Exercicio 4 - José Guilherme Vanz
+	</title>
+	<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+	<style>
+		.destaque {
+			font-size: 1.5em;
+			color: #f00;
+		}
+		.normal {
+			font-size: 1.1em;
+			color: #0f0;
+		}
+	</style>
+	<script>
+		$(function(){
+			$("#btn1").click(function(e){
+				e.preventDefault();
+				$(".normal").css("background-color", "#fc3");
+			});
+			$("#btn2").click(function(e){
+				e.preventDefault();
+				$("p strong").css("color", "#ff0");
+			});
+			$("#btn3").click(function(e){
+				e.preventDefault();
+				$("#btn2").hide();
+				$("#btn1").css("background-color", "#00f");
+				$("strong").css("font-size", "2em");
+			});
+			$("#zebrar").click(function(e){
+				e.preventDefault();
+				$("table.tabela tbody tr:odd").css("background-color", "#ccc");
+			});
+
+			$("#remover-zebra").click(function(e){
+				e.preventDefault();
+				$("table.tabela tbody tr:odd").css("background-color", "");
+			});
+		});
+	</script>
+</head>
+<body>
+
+<p><strong class="destaque">Aula 1 </strong><br/>
+Criação de página web</p>
+<p><strong>Aula 2 </strong><br/>
+Criação de banco de dados</p>
+<p><strong class="normal">Aula 3 </strong><br/>
+Criação de sistema completo</p>
+
+<input type="button" id="btn1" value="Botão 1"/>
+<input type="button" id="btn2" value="Botão 2"/>
+<input type="button" id="btn3" value="Botão 3"/>
+
+<br/><br/>
+
+<input type="button" id="zebrar" value="Zebrar"/>
+<input type="button" id="remover-zebra" value="Remover zebra"/>
+<br/><br/>
+<table class="tabela">
+	<tr><td>1.1</td><td>1.2</td></tr>
+	<tr><td>2.1</td><td>2.2</td></tr>
+	<tr><td>3.1</td><td>3.2</td></tr>
+	<tr><td>4.1</td><td>4.2</td></tr>
+	<tr><td>5.1</td><td>5.2</td></tr>
+	<tr><td>6.1</td><td>6.2</td></tr>
+</table>
+
+
+
+
+</body>
+</html>
