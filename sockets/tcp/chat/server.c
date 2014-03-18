@@ -26,8 +26,13 @@
 #include	<arpa/inet.h>
 
 #include	"log.c"
-#include	"commom.h"
+#include	"server.h"
 
+
+typedef struct{
+	int socket;
+	char name[50];
+} client;
 
 
 /*
@@ -66,7 +71,7 @@ int main (int argc, char *argv[] )
 		size_client = sizeof(client_config);
 		int client = accept(socket_servidor, (struct sockaddr*) &client_config , &size_client);
 
-		if(client == -1){
+		if(client < 0){
 			perror("Error accept: ");
 			return -1;
 		}else{
@@ -78,9 +83,6 @@ int main (int argc, char *argv[] )
 				perror("Error reading the message");
 			}else{
 				logDebug("%d BYTES RECIVED", recv_bytes);
-				message * msg = getMsgFromBuffer(buffer);
-				logDebug("MSG = %s", msg->msg);
-				free(msg);
 			}
 			free(buffer);
 		}

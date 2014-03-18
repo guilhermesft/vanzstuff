@@ -24,8 +24,11 @@
 #include	<netinet/in.h>
 #include	<stdio.h>
 
-#include	"commom.h"
-#include	"log.h"
+#include	"client.h"
+#include 	"log.h"
+
+int create_socket(const char* server_ip, unsigned int port);
+int connect_server(const char* nickname, int socket_server);
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -34,6 +37,31 @@
  * =====================================================================================
  */
 int main ( int argc, char *argv[] )
+{
+
+	int socket_server = create_socket("127.0.0.1",4040); //create the socket with the server
+	if(socket_server > 0){
+		connect_server("vanz", socket_server);
+	}
+	return 0;
+}
+
+int connect_server(const char* nickname, int socket_server)
+{
+	command * cmd = (command*) malloc(sizeof(command));
+	cmd->data = strdup(nickname);
+	cmd->type = CONNECT;
+	char* buffer = NULL;
+	size_t buf_size = command_to_buffer(cmd, buffer );
+	int send_ret = send(socket_server, buffer, buf_size, 0 );
+	if(send_ret < 0){ // send success
+		return send_ret;
+	}
+	//TODO recive response from server
+	return 1;
+}
+
+int create_socket(const char* server_ip, unsigned int port)
 {
 	int socket_server;
 	int connection;
@@ -44,32 +72,52 @@ int main ( int argc, char *argv[] )
 
 	memset(&server_config, 0, sizeof(server_config));
 	server_config.sin_family = PF_INET;
-	server_config.sin_port = htons(4040);
-	server_config.sin_addr.s_addr = inet_addr("127.0.0.1");
+	server_config.sin_port = htons(port);
+	server_config.sin_addr.s_addr = inet_addr(server_ip);
 
 	server_size = sizeof(server_config);
-
 	connection = connect(socket_server, (struct sockaddr*) &server_config, server_size);
 
-	if(connection == -1){
-		logError("Connection not established");
-		perror("Connection error: ");
-		return EXIT_SUCCESS;
+	if(connection < 0){
+		logInfo("Socket creation failed");
+		return connection;
 	}
-	logInfo("Connection established");
+	logDebug("Socket created");
+	return socket_server;
+}
 
-	//sending a message to the server
 
-	message * msg = create_message("Oi server! Funcionou porrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrraaaaaaaaaaaaaaaaaaaaa!!!!!!!!!!!!!!!!!!!");
-	void *buffer = malloc( get_message_byte_size(msg) );
-	getBufferToSend(msg, buffer);
-	if(buffer){
-		ssize_t return_send = send(socket_server, buffer, get_message_byte_size(msg) , 0);
+size_t get_message_byte_size(const message * msg)
+{
+	return  ( sizeof(msg->length) + strlen(msg->msg) );
+}
 
-		if(return_send == -1){
-			perror("Error sending the message: ");
-		}
-		logDebug("Message sent");
-	}
-	return EXIT_SUCCESS;
-}				/* ----------  end of function main  ---------- */
+message* create_message(const char* msg_text)
+{
+	message* msg = (message*) malloc(sizeof(message));
+	msg->msg = (char*) malloc(strlen(msg_text));
+	memset(msg->msg,0,strlen(msg_text));
+	msg->length = strlen(msg_text);
+	strcpy(msg->msg, msg_text);
+	return msg;
+}
+
+
+message* getMsgFromBuffer ( const char* buffer)
+{
+	size_t lenSize = sizeof(size_t);
+	message * msg = (message*) malloc(sizeof(message));
+	memcpy( &msg->length, buffer, lenSize);
+	msg->msg = malloc(msg->length);
+	memcpy(msg->msg, buffer + lenSize, msg->length);
+	return msg;
+}
+
+void getBufferToSend ( const message * msg, void *buffer )
+{
+	logDebug("Preparing buffer to send...");
+	memcpy(buffer, &msg->length, sizeof(msg->length) );
+	memcpy(buffer+sizeof(msg->length), msg->msg, strlen(msg->msg) );
+	logDebug("BUFFER ( %d length ) = %s", get_message_byte_size(msg), (char*)buffer );
+	logDebug("Buffer ready");
+}

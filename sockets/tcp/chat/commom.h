@@ -3,10 +3,10 @@
  *
  *       Filename:  commom.h
  *
- *    Description: Common struct and functions in both server and client side.
+ *    Description:
  *
  *        Version:  1.0
- *        Created:  02/27/2014 08:37:00 AM
+ *        Created:  03/12/2014 09:28:02 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -16,46 +16,36 @@
  * =====================================================================================
  */
 
+/**
+ * TODO - Documentation
+ */
+typedef enum{
+	CONNECT = 1,
+	DISCONNECT,
 
-#ifndef COMMOM_HEADER
-#define COMMOM_HEADER
+} command_type;
 
-#define MSG_TEXT_SIZE 100
-#define READ_BLOCK_SIZE 512
-
-
-#include <stdlib.h>
-
-/* *
- * message type is used to send a message between server and client side.
- * Its fields:
- * 	length : size_t field that contains the size of the message
- * 	msg : char pointer that constains the message
- * */
-typedef struct {
-	size_t length;
-	char *msg;
-} message;
-
-size_t get_message_byte_size(const message * msg);
-message* create_message(const char* msg_text);
-
-void prepareMsgBufferToSend (char *buffer, const message * msg);
+/**
+ * TODO - Documentation
+ */
+typedef struct{
+	command_type type;
+	char * data;
+	size_t data_size;
+} command;
 
 /*
  * ===  FUNCTION  ======================================================================
- *         Name:  getMsgFromBuffer
- *  Description: Convert a chat buffer with bytes recived from socket to a message pointer
+ *         Name:  command_to_buffer
+ *  Description: Function fill a buffer with data of a command
  * =====================================================================================
  */
-message* getMsgFromBuffer ( const char* buffer);
+size_t command_to_buffer (command * cmd, char* buffer);
 
 /*
  * ===  FUNCTION  ======================================================================
- *         Name:  getBufferToSend
- *  Description:  Generate a buffer to send
+ *         Name:  command_size
+ *  Description: Function return the size in bytes of a command
  * =====================================================================================
  */
-void getBufferToSend ( const message * msg, void* buffer );
-
-#endif
+size_t command_size(command * cmd);

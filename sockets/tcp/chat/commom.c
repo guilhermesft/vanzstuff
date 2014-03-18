@@ -3,10 +3,10 @@
  *
  *       Filename:  commom.c
  *
- *    Description:  Implementation of commom function user on server and client side
+ *    Description:
  *
  *        Version:  1.0
- *        Created:  06/03/14 00:57:35
+ *        Created:  03/17/2014 05:47:37 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -16,40 +16,22 @@
  * =====================================================================================
  */
 
-#include "commom.h"
-#include "log.h"
+#include <stdlib.h>
 #include <string.h>
 
-size_t get_message_byte_size(const message * msg)
+#include "commom.h"
+
+size_t command_to_buffer (command * cmd, char* buffer)
 {
-	return  ( sizeof(msg->length) + strlen(msg->msg) );
+	size_t buf_size = command_size(cmd);
+	memset(buffer, 0, buf_size);
+	memcpy(buffer, &cmd->type, sizeof(cmd->type));
+	memcpy(buffer, &cmd->data_size, sizeof(cmd->data_size));
+	memcpy(buffer, cmd->data, cmd->data_size);
+	return buf_size;
 }
 
-message* create_message(const char* msg_text)
+size_t command_size(command * cmd)
 {
-	message* msg = (message*) malloc(sizeof(message));
-	msg->msg = (char*) malloc(strlen(msg_text));
-	memset(msg->msg,0,strlen(msg_text));
-	msg->length = strlen(msg_text);
-	strcpy(msg->msg, msg_text);
-	return msg;
+	return sizeof(command) + cmd->data_size;
 }
-
-message* getMsgFromBuffer ( const char* buffer)
-{
-	size_t lenSize = sizeof(size_t);
-	message * msg = (message*) malloc(sizeof(message));
-	memcpy( &msg->length, buffer, lenSize);
-	msg->msg = malloc(msg->length);
-	memcpy(msg->msg, buffer + lenSize, msg->length);
-	return msg;
-}
-
-void getBufferToSend ( const message * msg, void *buffer )
-{
-	logDebug("Preparing buffer to send...");
-	memcpy(buffer, &msg->length, sizeof(msg->length) );
-	memcpy(buffer+sizeof(msg->length), msg->msg, strlen(msg->msg) );
-	logDebug("BUFFER ( %d length ) = %s", get_message_byte_size(msg), (char*)buffer );
-	logDebug("Buffer ready");
-}		/* -----  end of function getBufferToSend  ----- */
