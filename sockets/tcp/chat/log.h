@@ -17,8 +17,8 @@
  */
 
 
-#ifndef LOG_HEADER
-#define LOG_HEADER
+#ifndef __HEADER_LOG__
+#define __HEADER_LOG__
 
 #include <stdio.h>
 #include <stdarg.h>

@@ -3,7 +3,8 @@
  *
  *       Filename:  log.c
  *
- *    Description:
+ *    Description: This source constains all log implementation used on both client and
+ *    server side
  *
  *        Version:  1.0
  *        Created:  02/03/14 21:25:43

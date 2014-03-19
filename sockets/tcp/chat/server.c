@@ -25,7 +25,6 @@
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
 
-#include	"log.c"
 #include	"server.h"
 
 
@@ -78,11 +77,15 @@ int main (int argc, char *argv[] )
 			logInfo("Client connected :)");
 			char* buffer = malloc(READ_BLOCK_SIZE);
 			ssize_t recv_bytes = recv(client, buffer, READ_BLOCK_SIZE, 0);
+
 			if(recv_bytes < 0){
 				logError("Error reading the message");
 				perror("Error reading the message");
 			}else{
 				logDebug("%d BYTES RECIVED", recv_bytes);
+				command * cmd = (command*) malloc(sizeof(command));
+				buffer_to_command(buffer, cmd);
+				logInfo("%s connected!", cmd->data);
 			}
 			free(buffer);
 		}

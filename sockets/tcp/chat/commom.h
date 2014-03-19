@@ -16,6 +16,9 @@
  * =====================================================================================
  */
 
+#ifndef __HEADER_COMMOM__
+#define __HEADER_COMMOM__
+
 /**
  * TODO - Documentation
  */
@@ -49,3 +52,12 @@ size_t command_to_buffer (command * cmd, char* buffer);
  * =====================================================================================
  */
 size_t command_size(command * cmd);
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  buffer_to_command
+ *  Description:
+ * =====================================================================================
+ */
+void buffer_to_command ( const char* buffer, command * cmd );
+#endif

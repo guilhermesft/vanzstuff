@@ -50,14 +50,17 @@ int connect_server(const char* nickname, int socket_server)
 {
 	command * cmd = (command*) malloc(sizeof(command));
 	cmd->data = strdup(nickname);
+	cmd->data_size = strlen(cmd->data);
 	cmd->type = CONNECT;
-	char* buffer = NULL;
+	char* buffer = (char*) malloc(command_size(cmd));
 	size_t buf_size = command_to_buffer(cmd, buffer );
 	int send_ret = send(socket_server, buffer, buf_size, 0 );
 	if(send_ret < 0){ // send success
 		return send_ret;
 	}
 	//TODO recive response from server
+	free(cmd);
+	free(buffer);
 	return 1;
 }
 
