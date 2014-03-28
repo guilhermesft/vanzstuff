@@ -30,9 +30,12 @@
 
 typedef struct{
 	int socket;
-	char name[50];
+	char * nickname;
 } client;
 
+client clients[];
+
+void create_client(const char * nickname, int client_socket);
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -86,9 +89,19 @@ int main (int argc, char *argv[] )
 				command * cmd = (command*) malloc(sizeof(command));
 				buffer_to_command(buffer, cmd);
 				logInfo("%s connected!", cmd->data);
+				create_client(cmd->data, client);
 			}
 			free(buffer);
 		}
 	}
 	return EXIT_SUCCESS;
+}
+
+int create_client(const char* nickname, int socket)
+{
+	client * client = (client*) malloc(sizeof(client));
+	client->socket = socket;
+	client->nickname = (char*) malloc(strlen(nickname));
+	strcpy(&client->nickname, nickname);
+
 }
