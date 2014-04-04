@@ -24,18 +24,21 @@
 #include	<sys/socket.h>
 #include	<netinet/in.h>
 #include	<arpa/inet.h>
-
+#include	"tanaguara/thread/threadpool.h"
 #include	"server.h"
 
+
+#define THREAD_LISTEN_NUMBER 1
 
 typedef struct{
 	int socket;
 	char * nickname;
 } client;
 
-client clients[];
+static thread_pool * tp_listen;
 
-void create_client(const char * nickname, int client_socket);
+void startListenThread(int * socket_servidor);
+void handlerClientConnection();
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -45,8 +48,8 @@ void create_client(const char * nickname, int client_socket);
  */
 int main (int argc, char *argv[] )
 {
-	struct sockaddr_in server_config, client_config;
-	socklen_t size_client, size_server;
+	struct sockaddr_in server_config;
+	socklen_t size_server;
 	int socket_servidor;
 
 	socket_servidor = socket(PF_INET, SOCK_STREAM, 0); //Create the socket
@@ -69,18 +72,35 @@ int main (int argc, char *argv[] )
 		perror("Erro no listen: ");
 		return -1;
 	}
+	startListenThread(&socket_servidor);
+	wait_thread(tp_listen);
+	free(tp_listen);
+	return EXIT_SUCCESS;
+}
+
+void startListenThread(int * socket_servidor)
+{
+	tp_listen = create_thread_pool(THREAD_LISTEN_NUMBER);
+	int i = 0;
+	for( ; i < THREAD_LISTEN_NUMBER; i++){
+		init_new_thread(tp_listen, handlerClientConnection, socket_servidor);
+	}
+}
+
+void handlerClientConnection( int * socket_servidor )
+{
+	struct sockaddr_in client_config;
+	socklen_t size_client = sizeof(client_config);
 	while(1){
-		size_client = sizeof(client_config);
-		int client = accept(socket_servidor, (struct sockaddr*) &client_config , &size_client);
+		int client = accept(*socket_servidor, (struct sockaddr*) &client_config , &size_client);
 
 		if(client < 0){
 			perror("Error accept: ");
-			return -1;
+			//TODO handler error
 		}else{
-			logInfo("Client connected :)");
+			//Create a thread to handler client connection
 			char* buffer = malloc(READ_BLOCK_SIZE);
 			ssize_t recv_bytes = recv(client, buffer, READ_BLOCK_SIZE, 0);
-
 			if(recv_bytes < 0){
 				logError("Error reading the message");
 				perror("Error reading the message");
@@ -89,19 +109,8 @@ int main (int argc, char *argv[] )
 				command * cmd = (command*) malloc(sizeof(command));
 				buffer_to_command(buffer, cmd);
 				logInfo("%s connected!", cmd->data);
-				create_client(cmd->data, client);
 			}
 			free(buffer);
 		}
 	}
-	return EXIT_SUCCESS;
-}
-
-int create_client(const char* nickname, int socket)
-{
-	client * client = (client*) malloc(sizeof(client));
-	client->socket = socket;
-	client->nickname = (char*) malloc(strlen(nickname));
-	strcpy(&client->nickname, nickname);
-
 }
