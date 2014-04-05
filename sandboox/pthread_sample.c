@@ -45,8 +45,15 @@ int main( int argc, char ** argv)
 
 void print_function(int *value)
 {
-	int x = 0;
-	while( x++ < 5 ){
-		printf("Value = %d\n", *value);
+	static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+	if(pthread_mutex_lock(&lock) == 0){
+		static int x = 0;
+		int count = 0;
+		while( count < 5 ){
+			printf("Value = %d\n", x);
+			x += 1;
+			count += 1;
+		}
+		pthread_mutex_unlock(&lock);
 	}
 }
