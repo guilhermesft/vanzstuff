@@ -60,7 +60,7 @@ void executeChild( void )
 		perror("Child - Segment creation failed");
 		exit(1);
 	}
-	void * shm_ptr =  shmat(segment, NULL, 0);
+	char * shm_ptr = (char*) shmat(segment, NULL, 0);
 	if( shm_ptr == (void *)(-1) ){
 		perror("Child - Segment attachament failed");
 		exit(1);
@@ -73,10 +73,13 @@ void executeChild( void )
 	}
 	printf("Child - Segment size = %zu\n", shm_info.shm_segsz);
 	char * read_data = malloc(PG_SIZE);
-	memcpy(read_data, shm_ptr, PG_SIZE);
+	strncpy(read_data, shm_ptr, PG_SIZE);
 	printf("Data read: %s\n", read_data);
 	free(read_data);
-	shmdt(shm_ptr);
+	if( shmdt(shm_ptr) == -1 ){
+		perror("Detach failed");
+		exit(1);
+	}
 	close(segment);
 
 }
@@ -95,7 +98,7 @@ void executeParent( void )
 		perror("Segment creation failed");
 		exit(1);
 	}
-	void * shm_ptr =  shmat(segment, NULL, 0);
+	char * shm_ptr = (char*) shmat(segment, NULL, 0);
 	if( shm_ptr == (void *)(-1) ){
 		perror("Segment attachament failed");
 		exit(1);
@@ -109,9 +112,13 @@ void executeParent( void )
 	printf("Segment size = %zu\n", shm_info.shm_segsz);
 	printf("Writing...\n");
 	char * test = "Hello";
-	memcpy(shm_ptr, test, strlen(test));
+	strncpy(shm_ptr, test, PG_SIZE);
+	*(shm_ptr + strlen(test)) = '\0';
 	sleep(7);
 	shmctl(segment, IPC_RMID, &shm_info);
-	shmdt(shm_ptr);
+	if( shmdt(shm_ptr) == -1 ){
+		perror("Detach failed");
+		exit(1);
+	}
 	close(segment);
 }
