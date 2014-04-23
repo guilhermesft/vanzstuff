@@ -80,13 +80,18 @@ void executeParent()
 	printf("Parent wrote = %s\n", data->msg);
 	sleep(3);
 	printf("Parent read = %s\n", data->msg);
-	munmap(data, SIZE);
-	close(shmfd);
+	if( munmap(data, SIZE) == -1){
+		perror("[Parent] munmap failed");
+		exit(1);
+	}
+	if( shm_unlink(SHM_NAME) == -1 ){
+		perror("[Parent] shm_unlink failed");
+		exit(1);
+	}
 }
 
 void executeChild()
 {
-	sleep(1);
 	int shmfd = shm_open(SHM_NAME, O_RDWR, S_IRWXU);
 	if(shmfd < 0){
 		perror("[Child] shm_open failed");
@@ -100,6 +105,8 @@ void executeChild()
 	printf("Child read = %s\n", data->msg);
 	data->msg="Hello, father!";
 	printf("Child wrote = %s\n", data->msg);
-	munmap(data, SIZE);
-	close(shmfd);
+	if( munmap(data, SIZE) == -1 ){
+		perror("[Child] munmap failed");
+		exit(1);
+	}
 }
