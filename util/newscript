@@ -1,0 +1,51 @@
+#!/bin/sh
+# Creation: @@creation@@
+# Author: @@author@@
+# @@script_name@@
+# << Put the this script's goal here >>
+
+TEMPLATE="#!/bin/sh
+# Creation: @@creation@@
+# Author: @@author@@
+# @@script_name@@
+# << Put the this script's goal here >>
+
+#Function prints the helper
+function usage()
+{
+	echo \"USAGE:\"
+	echo \"@@script_name@@\"
+	# << Put the helper here >>
+}
+
+#main function
+function main()
+{
+	#<<main function>>
+}
+main
+"
+NEW_FILE=""
+
+#Function prints the helper
+function usage()
+{
+	echo "USAGE:"
+	echo "@@script_name@@"
+	# << Put the helper here >>
+}
+
+#main function
+function main()
+{
+	#check the parameteres
+	if [ $# -eq 0 ];then
+		usage
+	fi
+	NEW_FILE=${TEMPLATE//@@author@@/vanz}
+	NEW_FILE=${NEW_FILE//@@creation@@/`date`}
+	NEW_FILE=${NEW_FILE//@@script_name@@/$1}
+	echo "$NEW_FILE" > $1
+}
+
+main $@
