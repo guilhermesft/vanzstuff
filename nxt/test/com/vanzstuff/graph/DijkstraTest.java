@@ -45,34 +45,35 @@ public class DijkstraTest extends TestCase{
     public void testCalculate() throws Exception {
         Dijkstra dijkstra = new Dijkstra();
         Set<GraphVertex> result = dijkstra.calculate(mS, mG);
+        int totalVertexCheck = 0;
         for(GraphVertex v : result){
             if("s".equals(v.getId())){
                 assertEquals("Custo para o vertice s errado", 0.0, v.getCost());
                 assertEquals("Predecessor para o vertice s errado", null, v.getAncestor());
-                result.remove(v);
+                totalVertexCheck++;
             }
             if("t".equals(v.getId())){
                 assertEquals("Custo para o vertice t errado", 8.0, v.getCost());
                 assertEquals("Predecessor para o vertice s errado", "y", v.getAncestor().getId());
-                result.remove(v);
+                totalVertexCheck++;
             }
             if("y".equals(v.getId())){
                 assertEquals("Custo para o vertice y errado", 5.0, v.getCost());
                 assertEquals("Predecessor para o vertice s errado", "s", v.getAncestor().getId());
-                result.remove(v);
+                totalVertexCheck++;
             }
             if("x".equals(v.getId())){
                 assertEquals("Custo para o vertice x errado", 9.0, v.getCost());
                 assertEquals("Predecessor para o vertice s errado", "t", v.getAncestor().getId());
-                result.remove(v);
+                totalVertexCheck++;
             }
             if("z".equals(v.getId())){
                 assertEquals("Custo para o vertice z errado", 7.0, v.getCost());
                 assertEquals("Predecessor para o vertice s errado", "y", v.getAncestor().getId());
-                result.remove(v);
+                totalVertexCheck++;
             }
         }
-        assertEquals("Quantidade de vertices inesperada", 0, result.size());
+        assertEquals("Quantidade de vertices processada errada",result.size() , totalVertexCheck);
     }
 
     private class TestGraphVertex implements GraphVertex{
@@ -122,7 +123,7 @@ public class DijkstraTest extends TestCase{
 
         @Override
         public GraphVertex getAncestor() {
-            return null;
+            return mAncestor;
         }
 
         @Override
