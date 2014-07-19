@@ -1,17 +1,19 @@
 
 public class WaveFront {
 	
-	private final int R = Integer.MAX_VALUE;
-	private final int O = 1;
-    private final int xo = 1;
-    private final int yo = 0;
+	public static final int R = Integer.MAX_VALUE;
+	public static final int O = 1;
+    public final int xo = 1;
+    public final int yo = 0;
+    public final int xr = 6;
+    public final int yr = 5;
 	private  int mMundo[][] = {
 			{ 0,  O,  0,  0,  0,  0,  0 },
 			{ 0, -1,  0,  0,  0, -1,  0 },
 			{ 0,  0,  0, -1,  0,  0, -1 },
 			{ 0, -1,  0,  0, -1,  0,  0 },
 			{ 0,  0, -1,  0,  0,  0,  0 },
-			{ 0,  0,  	0,  0,  0, -1,  R }};
+			{ 0,  0,  0,  0,  0, -1,  R }};
 	
 	public int[][] getMundo(){
         initQuadranteDireitoSuperior(yo,xo);
