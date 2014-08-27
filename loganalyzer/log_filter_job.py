@@ -19,6 +19,7 @@ import re
 import datetime
 import time
 import queue
+import sets
 
 #Thread que simula um servidor HTTP lançando logs
 class HTTPServer(threading.Thread):
@@ -61,34 +62,58 @@ class HTTPServer(threading.Thread):
 		else:
 			fake_entry = fake_entry.replace("@@ip@@","192.168.100.002")
 			fake_entry = fake_entry.replace("@@cookie@@","biscoito-do-vanz-2")
-		return fake_entry
+		return fake_ent ry
 
 #Thread que pega um arquivo de log e quebra em chunk menores para processamento
-class SplitLogFileTask(threading.Thread):
+class Split LogFileTask(threading.Thread):
 
-	def __init__(self, log_file, input_queue):
-		self.log_file = log_file
-		self.output_queue = input_queue
+	def __init__(self, dir, dir_lock, output_queue, files_done):
+		#diretório que a thread monitora
+		self.dir = dir
+		#lock de acesso para o diretório
+		self.dir_lock = dir_lock
+		#fila onde será colocados os chunks
+		self.output_queue = output_queue
+		#conjunto que contem todos os arquivos que já forem processados
+		self.files_done = files_done
+		#flag que indica se a thread deve morrer
+		self.dead = False
 
-	def run(self):
+	def  run(self):
 		#se o arquivo de log especificado não existe, não faz nada. =(
-		if not os.path.exists(self.log_file):
+		if not os.path.exists(self.folder):
 			return
 		#o arquivo existe, agora vamos ler e gerar os chunk para processamento
 		#para cada 100 registros encontrados nos arquivos sera gerado um outro chunck
-		with open(self.log_file, 'rw') as file:
-			chunk = []
-			for entry in file:
-				#adiciona o regritro de log lido no chunk que esta sendo gerado
-				chunk.append(entry)
-				#verifica se o chunk não esta cheio
-				if len(chunk) == 100:
-					#o chunk esta cheio, agora coloca ele na fila para processamento
-					#como a queue eh thread safe não é necessário nenhum mecanismo que sincronia extra
-					self.output_queue.put(chunk)
-					#limpa o chunk para a próxima interação
-					chunk = []
- 			#TODO - talvez fazer um controle de todos os arquivos de log lidos
+		while not self.dead:
+			#no momento de acessar o diretório tem que ser uma thread por vez
+			self.dir_lock.acquire
+			#cria um conjunto com todos os arquivos
+			all_log_files = set(os.listdir(self.dir))
+			#da lista de todos os arquivos de log, retira o que jpa foi processado
+			all_log_files.difference_update(self.files_done)
+			#para não precisar tratar a exception, vou verificar se tem algo antes
+			if len(all_log_files) == 0:
+				continue
+			#pega um arquivo para processar
+			log_file = all_log_files.pop()
+			#adiciona o arquivo no conjunto de processados. Assim outras thread não vão mais pega ele
+			self.files_done.add(log_file)
+			#libera o diretório
+			self.dir_lock.release()
+			with open(log_file, 'r') as file:
+				chunk = []
+				for entry in file:
+					#adiciona o regritro de log lido no chunk que esta sendo gerado
+					chunk.append(entry)
+					#verifica se o chunk não esta cheio
+					if len(chunk) == 100:
+						#o chunk esta cheio, agora coloca ele na fila para processamento
+						#como a queue eh thread safe não é necessário nenhum mecanismo que sincronia extra
+						self.output_queue.put(chunk)
+						#limpa o chunk para a próxima interação
+						chunk = []
+
 
 #Thread que pega os chunk separados pela etapa anterior e os separa por userid
 class ChunkProcessor(threading.Thread):
@@ -165,15 +190,14 @@ def create_dir( server_count=4):
 			os.makedirs(server_name)
 
 
-create_dir(4)
+create_dir(1)
 #threads que simulam servidor http
 servers = []
 servers.append(HTTPServer('cluster/server-0'))
-servers.append(HTTPServer('cluster/server-1'))
-servers.append(HTTPServer('cluster/server-2'))
-servers.append(HTTPServer('cluster/server-3'))
+#servers.append(HTTPServer('cluster/server-1'))
+#servers.append(HTTPServer('cluster/server-2'))
+#servers.append(HTTPServer('cluster/server-3'))
 #thread que vão fazer o split
-
 split_queue = Queue(100)
 
 
