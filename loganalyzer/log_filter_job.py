@@ -1,6 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+'''
+ Toda a aplicação foi desenvolvida usando threads. Onde cada thread executa tem uma terefa especifica. São elas:
+ * HTTPServer: Thread que simular um servidor HTTP constantemente criando arquivos de log.
+ * SplitLogFileTask: Thread que fica observando um diretório em busca de novos arquivos de log. Entado um arquivos eh
+                     feito um split dele em chunk menores. Esses chunk são colocados em um fila para processamento futuro
+ * ChunkProcessor: Thrad que processa os chunk gerados. Na parte de processamento, eh gerado um dicionário onde a chave eh
+ 		   o valor do userid e o valor eh uma lista dos registro de log para o respectivo userid ordenado pela data e hora.
+		   Os dicionários gerados são colocados em um segunda fila para processamento.
+ * SaveFilterEntries: Essa thread corresponde a parte final do processamento. Ela é responsável em gravar os resgistros separados e
+ 		      ordenados pelo chunk processor em arquivo.
+'''
+
 import threading
 import os
 import re
@@ -50,9 +62,6 @@ class HTTPServer(threading.Thread):
 			fake_entry = fake_entry.replace("@@ip@@","192.168.100.002")
 			fake_entry = fake_entry.replace("@@cookie@@","biscoito-do-vanz-2")
 		return fake_entry
-
-
-
 
 #Thread que pega um arquivo de log e quebra em chunk menores para processamento
 class SplitLogFileTask(threading.Thread):
