@@ -9,7 +9,7 @@
  * ChunkProcessor: Thrad que processa os chunk gerados. Na parte de processamento, eh gerado um dicionário onde a chave eh
  		   o valor do userid e o valor eh uma lista dos registro de log para o respectivo userid ordenado pela data e hora.
 		   Os dicionários gerados são colocados em um segunda fila para processamento.
- * SaveFilterEntries: Essa thread corresponde a parte final do processamento. Ela é responsável em gravar os resgistros separados e
+ * OutPutWriter: Essa thread corresponde a parte final do processamento. Ela é responsável em gravar os resgistros separados e
  		      ordenados pelo chunk processor em arquivo.
 '''
 
@@ -144,7 +144,7 @@ class ChunkProcessor(threading.Thread):
 		#fila onde eh colocado o resultado do processamento
 		self.output = output_queue
 		#flag que indica se a thread deve morrer
-	 	self.dead = False
+	 	self. dead = False
 
 	def run(self):
 		logger = logging.getLogger('log')
@@ -157,7 +157,7 @@ class ChunkProcessor(threading.Thread):
 				#não tem nada na fila. Vai de novo!
 				continue;
 			#expressão regular utilizada para pegar o valor do biscoito do registro de log
-			regex = re.compile('userid=(?P<biscoito>.+)')
+			regex = re.compile('"userid=(?P<biscoito>.+)"')
 			output_dict = {}
 			for entry in chunk:
 				#procura pelo cookie no registro do log
@@ -174,41 +174,49 @@ class ChunkProcessor(threading.Thread):
 			#ordena todas as listas presentes no dicionario
 			for key in output_dict.keys():
 				#ordena a lista pela data que existe dentro dela
-				output_dict[key].sort( key=lambda x: datetime.datetime.strptime(regex.search(x).group('time'), '%d/%b/%Y:%H:%M:%S'))
+				output_dict[key].sort( key=lambda x: time.strptime(regex.search(x).group('time'), '%d/%b/%Y:%H:%M:%S'))
 			#o chunk foi processado e os registro de logs foram agrupados por userid. Passo o dicionacirio para frente
 			#TODO - verificar questão do block. Se por algum motivo a fila estiver sempre cheia, vai tratar a thread
 			self.output.put(output_dict)
+			logger.debug('%s','Chunk processado', extra={'type':'PROCESSOR'})
 
-	def sort_function(L):
-		pass
 
 #Thrad que vai pegar os registros de log agrupados por userid e vai gravar em arquivo
-class SaveFilterEntries(threading.Thread):
+class OutPutWriter(threading.Thread):
 
 	def __init__(self, input_queue, output_folder):
+		super(OutPutWriter, self).__init__()
 		#fila onde estão os registros de log agrupados por userid(cookie)
 		self.input = input_queue
 		#diretório onde serão gravados os arquivos dos registro de log de cada userid
 		self.output = output_folder
 		#flag que indica que a thread deve morrer
-		self.dead = false
+		self.dead = False
 
 	def run(self):
 		logger = logging.getLogger('log')
+		log_stuff = {'type': 'WRITER'}
+		logger.debug('%s', 'OutPutWrite iniciado', extra=log_stuff)
 		#primeiro verifica se o diretório informado realmente existe
 		if not os.path.exists(self.output):
+			logger.debug('Diretório ( %s ) para gravação do output não existe.', self.output, extra=log_stuff)
 			#não existe... bye,bye
 			return
 		#regex para pegar a data e hora dentro do registro de log
 		regex = re.compile('(?P<time>\d\d/\w{3}/\d{4}(:\d\d){3})')
-		while not dead:
-			#pega um pouco de registros para serem gravados. TODO Verificar se der timeout lança exception ou retorna none
-			input = self.input.get(true,1000)
+		while not self.dead:
+			try:
+				#pega um pouco de registros para serem gravados
+				input = self.input.get(True,10)
+			except Queue.Empty:
+				#vish, não achou nada na file. Tentar novamente
+				continue
 			for userid in input.keys():
 				#abre o arquivo
-				with open(self.output + os.sep + userid, 'rw+') as file:
+				with open(self.output + os.sep + userid, 'w+') as file:
 					for entry in input[userid]:
 				 		file.write(entry)
+					logger.debug('Gravou no arquivo %s', userid, extra=log_stuff)
 
 #Cria os diretórios para simular os servidores
 def create_dir( server_count=4):
@@ -216,6 +224,10 @@ def create_dir( server_count=4):
 		server_name = "cluster" + os.sep + "server-" + str(server)
 		if not os.path.exists(server_name):
 			os.makedirs(server_name)
+'''	server_name = "cluster" + os.sep + "server-0" + os.sep + 'filter'
+	if not os.path.exists(server_name):
+		os.makedirs(server_name)'''
+
 
 
 
@@ -266,12 +278,18 @@ processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 
+writers = []
+writers.append(OutPutWriter(chunk_processed,os.getcwd()))
+
+
 for server in servers:
 	server.start()
 for splitter in splitters:
 	splitter.start()
 for processor in processors:
 	processor.start()
+for writer in writers:
+	writer.start()
 
 #para e espera as thread dos servidores finalizar
 for server in servers:
@@ -296,6 +314,10 @@ for processor in processors:
 	processor.join()
 
 #espera que todos os splits foram processados
-#while not chunk_processed.empty():
-#	pass
+while not chunk_processed.empty():
+	pass
+for writer in writers:
+	writer.dead=True
+for writer in writers:
+	writer.join()
 print 'Fim!'
