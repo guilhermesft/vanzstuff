@@ -18,8 +18,11 @@ import os
 import re
 import datetime
 import time
-import queue
 import sets
+import logging
+import Queue
+import tempfile
+import shutil
 
 #Thread que simula um servidor HTTP lançando logs
 class HTTPServer(threading.Thread):
@@ -31,19 +34,24 @@ class HTTPServer(threading.Thread):
 		#total de registros de log em cada arquivo de log
 		self.entries = entries_log_file
 		#flag que indica que a thread deve morrer
-		self.dead = False
+	 	self.dead = False
 
 	def run(self):
+
+		logger = logging.getLogger('log')
 		#pega a quantidade de arqivos de log existente atualmente
 		total_log_files = len(os.listdir(self.dir))
 		log_entry_id = 1;
 		while not self.dead:
-			with open(self.dir + os.sep + "log-" + str(total_log_files), 'w') as file:
+			with tempfile.NamedTemporaryFile(delete=False) as file:
+#			with open(self.dir + os.sep + "log-" + str(total_log_files), 'w') as file:
 				for entry in range(self.entries):
 					file.write(self.create_log_entry(log_entry_id))
 					file.write('\n')
 					log_entry_id += 1
+				shutil.move(file.name, self.dir + os.sep + "log-" + str(total_log_files))
 				total_log_files += 1
+				logger.debug("Novo arquivo de log: %s ", self.dir + os.sep + "log-" + str(total_log_files), extra={'type':'SERVIDOR'})
 
 	#Cria um registro de log fake
 	def create_log_entry(self, entry_count):
@@ -62,12 +70,13 @@ class HTTPServer(threading.Thread):
 		else:
 			fake_entry = fake_entry.replace("@@ip@@","192.168.100.002")
 			fake_entry = fake_entry.replace("@@cookie@@","biscoito-do-vanz-2")
-		return fake_ent ry
+		return fake_entry
 
 #Thread que pega um arquivo de log e quebra em chunk menores para processamento
-class Split LogFileTask(threading.Thread):
+class SplitLogFileTask(threading.Thread):
 
 	def __init__(self, dir, dir_lock, output_queue, files_done):
+		super(SplitLogFileTask, self).__init__()
 		#diretório que a thread monitora
 		self.dir = dir
 		#lock de acesso para o diretório
@@ -80,20 +89,24 @@ class Split LogFileTask(threading.Thread):
 		self.dead = False
 
 	def  run(self):
+		logger = logging.getLogger('log')
+		logger.debug('%s', "Iniciando execução", extra={'type': 'SPLITTER'})
 		#se o arquivo de log especificado não existe, não faz nada. =(
-		if not os.path.exists(self.folder):
+		if not os.path.exists(self.dir):
+			logger.debug('%s', "Diretório não encontrado", extra={'type':'SPLITTER'})
 			return
 		#o arquivo existe, agora vamos ler e gerar os chunk para processamento
 		#para cada 100 registros encontrados nos arquivos sera gerado um outro chunck
 		while not self.dead:
 			#no momento de acessar o diretório tem que ser uma thread por vez
-			self.dir_lock.acquire
+			self.dir_lock.acquire()
 			#cria um conjunto com todos os arquivos
 			all_log_files = set(os.listdir(self.dir))
 			#da lista de todos os arquivos de log, retira o que jpa foi processado
 			all_log_files.difference_update(self.files_done)
 			#para não precisar tratar a exception, vou verificar se tem algo antes
 			if len(all_log_files) == 0:
+				self.dir_lock.release()
 				continue
 			#pega um arquivo para processar
 			log_file = all_log_files.pop()
@@ -101,7 +114,8 @@ class Split LogFileTask(threading.Thread):
 			self.files_done.add(log_file)
 			#libera o diretório
 			self.dir_lock.release()
-			with open(log_file, 'r') as file:
+			with open(self.dir + os.sep + log_file, 'r') as file:
+				logger.debug('Processando: %s ', file.name, extra={'type':'SPLITTER'})
 				chunk = []
 				for entry in file:
 					#adiciona o regritro de log lido no chunk que esta sendo gerado
@@ -113,7 +127,9 @@ class Split LogFileTask(threading.Thread):
 						self.output_queue.put(chunk)
 						#limpa o chunk para a próxima interação
 						chunk = []
-
+				logger.debug("Terminou de processar: %s ", file.name, extra={'type':'SPLITTER'})
+		logger.debug('%s', "Finalizado", extra={'type':'SPLITTER'})
+			#no momento de acessar o diretório tem que ser uma thread por vez
 
 #Thread que pega os chunk separados pela etapa anterior e os separa por userid
 class ChunkProcessor(threading.Thread):
@@ -127,6 +143,7 @@ class ChunkProcessor(threading.Thread):
 		self.dead = false
 
 	def run(self):
+		logger = logging.getLogger('log')
 		#enquando ninguém matar a thread... toca o barco.
 		while not dead:
 			#tenta pegar um chunk na fila de chunk pendentes. TODO - verificar se der timeout lança exception ou só retorna none
@@ -167,6 +184,7 @@ class SaveFilterEntries(threading.Thread):
 		self.dead = false
 
 	def run(self):
+		logger = logging.getLogger('log')
 		#primeiro verifica se o diretório informado realmente existe
 		if not os.path.exists(self.output):
 			#não existe... bye,bye
@@ -190,24 +208,55 @@ def create_dir( server_count=4):
 			os.makedirs(server_name)
 
 
+
+
+FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
+logging.basicConfig(filename='log',format=FORMAT, level=logging.DEBUG)
+
 create_dir(1)
 #threads que simulam servidor http
 servers = []
-servers.append(HTTPServer('cluster/server-0'))
+servers.append(HTTPServer('cluster/server-0', 200000))
 #servers.append(HTTPServer('cluster/server-1'))
 #servers.append(HTTPServer('cluster/server-2'))
 #servers.append(HTTPServer('cluster/server-3'))
-#thread que vão fazer o split
-split_queue = Queue(100)
 
+#objetos de lock de acesso aos diretórios
+dir_lock_0 = threading.Lock()
 
+#set que guarda os arquivos já processador do diretório
+files_done_set_0 = sets.Set()
+
+#fila de processamento dos splits
+splits_queue = Queue.Queue()
+#thread que vão dar quebrar os arquivos de log
+splitters = []
+splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
+splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
+splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
 
 for server in servers:
 	server.start()
-time.sleep(180)
+for splitter in splitters:
+	splitter.start()
+
+time.sleep(60)
+
+#para e espera as thread dos servidores finalizar
 for server in servers:
 	server.dead = True
 for server in servers:
 	server.join()
+print "Servers thread finalizadas"
+
+#espera todos os split forem removidos da fila
+#while not splits_queue.empty():
+#	pass
+#para todas as thread de splitt
+for splitter in splitters:
+	splitter.dead = True
+for splitter in splitters:
+	splitter.join()
+print "Splitter threads finalizadas"
 
 print 'Fim!'
