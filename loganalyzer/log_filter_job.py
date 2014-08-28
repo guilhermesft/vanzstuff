@@ -37,18 +37,21 @@ class HTTPServer(threading.Thread):
 	 	self.dead = False
 
 	def run(self):
-
 		logger = logging.getLogger('log')
+		logger.debug('%s', "Servidor iniciado", extra={'type':'SERVER'})
+		if not os.path.exists(self.dir):
+			logger.debug('%s', "Diretório não encontrado", extra={'type':'SERVER'})
+			return
 		#pega a quantidade de arqivos de log existente atualmente
 		total_log_files = len(os.listdir(self.dir))
 		log_entry_id = 1;
 		while not self.dead:
 			with tempfile.NamedTemporaryFile(delete=False) as file:
-#			with open(self.dir + os.sep + "log-" + str(total_log_files), 'w') as file:
 				for entry in range(self.entries):
 					file.write(self.create_log_entry(log_entry_id))
 					file.write('\n')
 					log_entry_id += 1
+					time.sleep(0.5)
 				shutil.move(file.name, self.dir + os.sep + "log-" + str(total_log_files))
 				total_log_files += 1
 				logger.debug("Novo arquivo de log: %s ", self.dir + os.sep + "log-" + str(total_log_files), extra={'type':'SERVIDOR'})
@@ -129,31 +132,36 @@ class SplitLogFileTask(threading.Thread):
 						chunk = []
 				logger.debug("Terminou de processar: %s ", file.name, extra={'type':'SPLITTER'})
 		logger.debug('%s', "Finalizado", extra={'type':'SPLITTER'})
-			#no momento de acessar o diretório tem que ser uma thread por vez
+	 		#no momento de acessar o diretório tem que ser uma thread por vez
 
 #Thread que pega os chunk separados pela etapa anterior e os separa por userid
 class ChunkProcessor(threading.Thread):
 
 	def __init__(self, input_queue, output_queue):
+		super(ChunkProcessor, self).__init__()
 		#fila onde estão os chunk pendentes
 		self.input = input_queue
 		#fila onde eh colocado o resultado do processamento
 		self.output = output_queue
 		#flag que indica se a thread deve morrer
-		self.dead = false
+	 	self.dead = False
 
 	def run(self):
 		logger = logging.getLogger('log')
 		#enquando ninguém matar a thread... toca o barco.
-		while not dead:
-			#tenta pegar um chunk na fila de chunk pendentes. TODO - verificar se der timeout lança exception ou só retorna none
-			chunk = self.input.get(true, 1000)
+		while not self.dead:
+			try:
+				#tenta pegar um chunk na fila de chunk pendentes. Se não retornar nada em 15 segundos, aborta
+				chunk = self.input.get(True, 15)
+			except Queue.Empty:
+				#não tem nada na fila. Vai de novo!
+				continue;
 			#expressão regular utilizada para pegar o valor do biscoito do registro de log
 			regex = re.compile('userid=(?P<biscoito>.+)')
 			output_dict = {}
 			for entry in chunk:
 				#procura pelo cookie no registro do log
-				cookie = regex.match(entry).group(0)
+				cookie = regex.search(entry).group('biscoito')
 				if cookie is not None:
 					#verifica se esse cookie jah não foi encontrado no chunk processado
 					if not output_dict.has_key(cookie):
@@ -161,15 +169,17 @@ class ChunkProcessor(threading.Thread):
 						output_dict[cookie] = []
 					#agora adiciona o registro de log no dicionario de saida associado com o userid dele
 					output_dict[cookie].append(entry)
+			#regex utilizada para retirar a data de dentro do registro de log
+			regex = re.compile('(?P<time>\d\d/\w{3}/\d{4}(:\d\d){3})')
 			#ordena todas as listas presentes no dicionario
 			for key in output_dict.keys():
-				#TODO - ordenar por data e hora
-				output_dict[key].sort()
+				#ordena a lista pela data que existe dentro dela
+				output_dict[key].sort( key=lambda x: datetime.datetime.strptime(regex.search(x).group('time'), '%d/%b/%Y:%H:%M:%S'))
 			#o chunk foi processado e os registro de logs foram agrupados por userid. Passo o dicionacirio para frente
-			#TODO - verificar questão do timeout
+			#TODO - verificar questão do block. Se por algum motivo a fila estiver sempre cheia, vai tratar a thread
 			self.output.put(output_dict)
 
-	def sort_function():
+	def sort_function(L):
 		pass
 
 #Thrad que vai pegar os registros de log agrupados por userid e vai gravar em arquivo
@@ -198,7 +208,7 @@ class SaveFilterEntries(threading.Thread):
 				#abre o arquivo
 				with open(self.output + os.sep + userid, 'rw+') as file:
 					for entry in input[userid]:
-						file.write(entry)
+				 		file.write(entry)
 
 #Cria os diretórios para simular os servidores
 def create_dir( server_count=4):
@@ -209,23 +219,29 @@ def create_dir( server_count=4):
 
 
 
-
+#configura o formato do log utilizado para debug da aplicação
 FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
 logging.basicConfig(filename='log',format=FORMAT, level=logging.DEBUG)
 
-create_dir(1)
+create_dir(4)
 #threads que simulam servidor http
 servers = []
-servers.append(HTTPServer('cluster/server-0', 200000))
-#servers.append(HTTPServer('cluster/server-1'))
-#servers.append(HTTPServer('cluster/server-2'))
-#servers.append(HTTPServer('cluster/server-3'))
+servers.append(HTTPServer('cluster/server-0', 1000))
+servers.append(HTTPServer('cluster/server-1', 1000))
+servers.append(HTTPServer('cluster/server-2', 1000))
+servers.append(HTTPServer('cluster/server-3', 1000))
 
 #objetos de lock de acesso aos diretórios
 dir_lock_0 = threading.Lock()
+dir_lock_1 = threading.Lock()
+dir_lock_2 = threading.Lock()
+dir_lock_3 = threading.Lock()
 
 #set que guarda os arquivos já processador do diretório
 files_done_set_0 = sets.Set()
+files_done_set_1 = sets.Set()
+files_done_set_2 = sets.Set()
+files_done_set_3 = sets.Set()
 
 #fila de processamento dos splits
 splits_queue = Queue.Queue()
@@ -233,14 +249,29 @@ splits_queue = Queue.Queue()
 splitters = []
 splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
 splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
-splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
+
+splitters.append(SplitLogFileTask(servers[1].dir, dir_lock_1, splits_queue, files_done_set_1))
+splitters.append(SplitLogFileTask(servers[1].dir, dir_lock_1, splits_queue, files_done_set_1))
+
+splitters.append(SplitLogFileTask(servers[2].dir, dir_lock_2, splits_queue, files_done_set_2))
+splitters.append(SplitLogFileTask(servers[2].dir, dir_lock_2, splits_queue, files_done_set_2))
+
+splitters.append(SplitLogFileTask(servers[3].dir, dir_lock_3, splits_queue, files_done_set_3))
+splitters.append(SplitLogFileTask(servers[3].dir, dir_lock_3, splits_queue, files_done_set_3))
+
+chunk_processed = Queue.Queue()
+processors = []
+processors.append(ChunkProcessor(splits_queue,chunk_processed ))
+processors.append(ChunkProcessor(splits_queue,chunk_processed ))
+processors.append(ChunkProcessor(splits_queue,chunk_processed ))
+processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 
 for server in servers:
 	server.start()
 for splitter in splitters:
 	splitter.start()
-
-time.sleep(60)
+for processor in processors:
+	processor.start()
 
 #para e espera as thread dos servidores finalizar
 for server in servers:
@@ -249,9 +280,6 @@ for server in servers:
 	server.join()
 print "Servers thread finalizadas"
 
-#espera todos os split forem removidos da fila
-#while not splits_queue.empty():
-#	pass
 #para todas as thread de splitt
 for splitter in splitters:
 	splitter.dead = True
@@ -259,4 +287,15 @@ for splitter in splitters:
 	splitter.join()
 print "Splitter threads finalizadas"
 
+#espera todos os split forem removidos da fila
+while not splits_queue.empty():
+	pass
+for processor in processors:
+	processor.dead=True
+for processor in processors:
+	processor.join()
+
+#espera que todos os splits foram processados
+#while not chunk_processed.empty():
+#	pass
 print 'Fim!'
