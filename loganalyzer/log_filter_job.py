@@ -3,7 +3,6 @@
 
 '''
  Toda a aplicação foi desenvolvida usando threads. Onde cada thread executa tem uma terefa especifica. São elas:
- * HTTPServer: Thread que simular um servidor HTTP constantemente criando arquivos de log.
  * SplitLogFileTask: Thread que fica observando um diretório em busca de novos arquivos de log. Entado um arquivos eh
                      feito um split dele em chunk menores. Esses chunk são colocados em um fila para processamento futuro
  * ChunkProcessor: Thrad que processa os chunk gerados. Na parte de processamento, eh gerado um dicionário onde a chave eh
@@ -59,6 +58,9 @@ class SplitLogFileTask(threading.Thread):
 			#para não precisar tratar a exception, vou verificar se tem algo antes
 			if len(all_log_files) == 0:
 				self.dir_lock.release()
+				#jah que todos os arquivos forem processador. Fim de papo
+				self.dead = True
+				logger.debug('%s', "Todos os arquivos processados", extra={'type':'SPLITTER'})
 				continue
 			#pega um arquivo para processar
 			log_file = all_log_files.pop()
@@ -81,7 +83,7 @@ class SplitLogFileTask(threading.Thread):
 						chunk = []
 				logger.debug("Terminou de processar: %s ", file.name, extra={'type':'SPLITTER'})
 		logger.debug('%s', "Finalizado", extra={'type':'SPLITTER'})
-	 		#no momento de acessar o diretório tem que ser uma thread por vez
+	 	 	#no momento de acessar o diretório tem que ser uma thread por vez
 
 #Thread que pega os chunk separados pela etapa anterior e os separa por userid
 class ChunkProcessor(threading.Thread):
@@ -171,84 +173,101 @@ class OutPutWriter(threading.Thread):
 				#libera o diretório de output
 				self.folder_lock.release()
 
-#configura o formato do log utilizado para debug da aplicação
-FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
-logging.basicConfig(filename='log',format=FORMAT, level=logging.DEBUG)
+#método que ordena os arquivos de saída da aplicação
+def sort_output(dir):
+	regex = re.compile('(?P<time>\d\d/\w{3}/\d{4}(:\d\d){3})')
+	files = os.listdir(dir)
+	for file in files:
+		with open(dir + os.sep + file, 'r+') as log:
+			lines = log.readlines()
+			lines.sort( key=lambda x: time.strptime(regex.search(x).group('time'), '%d/%b/%Y:%H:%M:%S'))
+			log.seek(0)
+			log.writelines(lines)
 
-#BUG! Conforme dito aqui: http://bugs.python.org/issue7980
-time.strptime('15/Aug/2013:13:54:38', '%d/%b/%Y:%H:%M:%S')
+#função que cria todas as thread e objectos necessário para execução da aplicação
+def run_filter():
 
-#objetos de lock de acesso aos diretórios
-dir_lock_0 = threading.Lock()
-dir_lock_1 = threading.Lock()
-dir_lock_2 = threading.Lock()
-dir_lock_3 = threading.Lock()
+	#objetos de lock de acesso aos diretórios
+	dir_lock_0 = threading.Lock()
+	dir_lock_1 = threading.Lock()
+	dir_lock_2 = threading.Lock()
+	dir_lock_3 = threading.Lock()
 
-#set que guarda os arquivos já processador do diretório
-files_done_set_0 = sets.Set()
-files_done_set_1 = sets.Set()
-files_done_set_2 = sets.Set()
-files_done_set_3 = sets.Set()
+	#set que guarda os arquivos já processador do diretório
+	files_done_set_0 = sets.Set()
+	files_done_set_1 = sets.Set()
+	files_done_set_2 = sets.Set()
+	files_done_set_3 = sets.Set()
 
-#fila de processamento dos splits
-splits_queue = Queue.Queue()
-#thread que vão dar quebrar os arquivos de log
-splitters = []
-splitters.append(SplitLogFileTask('cluster/server-0', dir_lock_0, splits_queue, files_done_set_0))
-splitters.append(SplitLogFileTask('cluster/server-0', dir_lock_0, splits_queue, files_done_set_0))
+	#fila de processamento dos splits
+	splits_queue = Queue.Queue()
+	#thread que vão dar quebrar os arquivos de log
+	splitters = []
+	splitters.append(SplitLogFileTask('cluster/server-0', dir_lock_0, splits_queue, files_done_set_0))
+	splitters.append(SplitLogFileTask('cluster/server-0', dir_lock_0, splits_queue, files_done_set_0))
 
-splitters.append(SplitLogFileTask('cluster/server-1', dir_lock_1, splits_queue, files_done_set_1))
-splitters.append(SplitLogFileTask('cluster/server-1', dir_lock_1, splits_queue, files_done_set_1))
+	splitters.append(SplitLogFileTask('cluster/server-1', dir_lock_1, splits_queue, files_done_set_1))
+	splitters.append(SplitLogFileTask('cluster/server-1', dir_lock_1, splits_queue, files_done_set_1))
 
-splitters.append(SplitLogFileTask('cluster/server-2', dir_lock_2, splits_queue, files_done_set_2))
-splitters.append(SplitLogFileTask('cluster/server-2', dir_lock_2, splits_queue, files_done_set_2))
+	splitters.append(SplitLogFileTask('cluster/server-2', dir_lock_2, splits_queue, files_done_set_2))
+	splitters.append(SplitLogFileTask('cluster/server-2', dir_lock_2, splits_queue, files_done_set_2))
 
-splitters.append(SplitLogFileTask('cluster/server-3', dir_lock_3, splits_queue, files_done_set_3))
-splitters.append(SplitLogFileTask('cluster/server-3', dir_lock_3, splits_queue, files_done_set_3))
+	splitters.append(SplitLogFileTask('cluster/server-3', dir_lock_3, splits_queue, files_done_set_3))
+	splitters.append(SplitLogFileTask('cluster/server-3', dir_lock_3, splits_queue, files_done_set_3))
 
-chunk_processed = Queue.Queue()
-processors = []
-processors.append(ChunkProcessor(splits_queue,chunk_processed ))
-processors.append(ChunkProcessor(splits_queue,chunk_processed ))
-processors.append(ChunkProcessor(splits_queue,chunk_processed ))
-processors.append(ChunkProcessor(splits_queue,chunk_processed ))
+	chunk_processed = Queue.Queue()
+	processors = []
+	processors.append(ChunkProcessor(splits_queue,chunk_processed ))
+	processors.append(ChunkProcessor(splits_queue,chunk_processed ))
+	processors.append(ChunkProcessor(splits_queue,chunk_processed ))
+	processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 
-#lock para controlar acesso no diretório onde são colocados os log filtrados
-filter_folder_lock = threading.Lock();
-writers = []
-writers.append(OutPutWriter(chunk_processed,'cluster/server-0/filter', filter_folder_lock))
-writers.append(OutPutWriter(chunk_processed,'cluster/server-0/filter', filter_folder_lock))
+	#lock para controlar acesso no diretório onde são colocados os log filtrados
+	filter_folder_lock = threading.Lock();
+	writers = []
+	writers.append(OutPutWriter(chunk_processed,'cluster/server-0/filter', filter_folder_lock))
+	writers.append(OutPutWriter(chunk_processed,'cluster/server-0/filter', filter_folder_lock))
 
 
-for splitter in splitters:
-	splitter.start()
-for processor in processors:
-	processor.start()
-for writer in writers:
-	writer.start()
+	for splitter in splitters:
+		splitter.start()
+	for processor in processors:
+		processor.start()
+	for writer in writers:
+		writer.start()
 
-time.sleep(300)
+	for splitter in splitters:
+		splitter.join()
+	print "Splitter threads finalizadas"
 
-#para todas as thread de splitt
-for splitter in splitters:
-	splitter.dead = True
-for splitter in splitters:
-	splitter.join()
-print "Splitter threads finalizadas"
+	#espera todos os split forem removidos da fila
+	while not splits_queue.empty():
+		pass
+	for processor in processors:
+		processor.dead=True
+	for processor in processors:
+		processor.join()
 
-#espera todos os split forem removidos da fila
-while not splits_queue.empty():
-	pass
-for processor in processors:
-	processor.dead=True
-for processor in processors:
-	processor.join()
+	#espera que todos os splits foram processados
+	while not chunk_processed.empty():
+		pass
+	for writer in writers:
+		writer.dead=True
+	for writer in writers:
+		writer.join()
 
-#espera que todos os splits foram processados
-while not chunk_processed.empty():
-	pass
-for writer in writers:
-	writer.dead=True
-for writer in writers:
-	writer.join()
-print 'Fim!'
+
+	print 'Fim!'
+
+if __name__ == '__main__':
+	#configura o formato do log utilizado para debug da aplicação
+	FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
+	logging.basicConfig(filename='log',format=FORMAT, level=logging.DEBUG)
+
+	#BUG! http://bugs.python.org/issue7980
+	time.strptime('15/Aug/2013:13:54:38', '%d/%b/%Y:%H:%M:%S')
+
+	#roda o filtro nos log
+	run_filter()
+	#ordena o output
+	sort_output('cluster/server-0/filter')
