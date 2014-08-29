@@ -58,6 +58,9 @@ def create_dir( server_count=4):
 		server_name = "cluster" + os.sep + "server-" + str(server)
 		if not os.path.exists(server_name):
 			os.makedirs(server_name)
+	filter_log_dir = 'cluster' + os.sep + 'server-0/filter'
+	if not os.path.exists(filter_log_dir):
+		os.makedirs(filter_log_dir)
 
 
 

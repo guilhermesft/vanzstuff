@@ -22,6 +22,7 @@ import sets
 import logging
 import Queue
 import tempfile
+import glob
 
 #Thread que pega um arquivo de log e quebra em chunk menores para processamento
 class SplitLogFileTask(threading.Thread):
@@ -51,8 +52,8 @@ class SplitLogFileTask(threading.Thread):
 		while not self.dead:
 			#no momento de acessar o diretório tem que ser uma thread por vez
 			self.dir_lock.acquire()
-			#cria um conjunto com todos os arquivos
-			all_log_files = set(os.listdir(self.dir))
+			#cria um conjunto com todos os arquivos de log
+			all_log_files = set(glob.glob(self.dir + os.sep + 'log-*'))
 			#da lista de todos os arquivos de log, retira o que jpa foi processado
 			all_log_files.difference_update(self.files_done)
 			#para não precisar tratar a exception, vou verificar se tem algo antes
@@ -65,7 +66,7 @@ class SplitLogFileTask(threading.Thread):
 			self.files_done.add(log_file)
 			#libera o diretório
 			self.dir_lock.release()
-			with open(self.dir + os.sep + log_file, 'r') as file:
+			with open(log_file, 'r') as file:
 				logger.debug('Processando: %s ', file.name, extra={'type':'SPLITTER'})
 				chunk = []
 				for entry in file:
@@ -128,16 +129,17 @@ class ChunkProcessor(threading.Thread):
 			self.output.put(output_dict)
 			logger.debug('%s','Chunk processado', extra={'type':'PROCESSOR'})
 
-
 #Thrad que vai pegar os registros de log agrupados por userid e vai gravar em arquivo
 class OutPutWriter(threading.Thread):
 
-	def __init__(self, input_queue, output_folder):
+	def __init__(self, input_queue, output_folder, folder_lock):
 		super(OutPutWriter, self).__init__()
 		#fila onde estão os registros de log agrupados por userid(cookie)
 		self.input = input_queue
 		#diretório onde serão gravados os arquivos dos registro de log de cada userid
 		self.output = output_folder
+		#lock da pasta onde eh gravado o output
+		self.folder_lock = folder_lock
 		#flag que indica que a thread deve morrer
 		self.dead = False
 
@@ -160,10 +162,14 @@ class OutPutWriter(threading.Thread):
 				#vish, não achou nada na file. Tentar novamente
 				continue
 			for userid in input.keys():
+				#locka o diretório de output
+				self.folder_lock.acquire()
 				#abre o arquivo
 				with open(self.output + os.sep + userid, 'a+') as file:
 				 	file.writelines(input[userid])
 					logger.debug('Gravou no arquivo %s', userid, extra=log_stuff)
+				#libera o diretório de output
+				self.folder_lock.release()
 
 #configura o formato do log utilizado para debug da aplicação
 FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
@@ -204,8 +210,11 @@ processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 processors.append(ChunkProcessor(splits_queue,chunk_processed ))
 
+#lock para controlar acesso no diretório onde são colocados os log filtrados
+filter_folder_lock = threading.Lock();
 writers = []
-writers.append(OutPutWriter(chunk_processed,os.getcwd()))
+writers.append(OutPutWriter(chunk_processed,'cluster/server-0/filter', filter_folder_lock))
+writers.append(OutPutWriter(chunk_processed,'cluster/server-0/filter', filter_folder_lock))
 
 
 for splitter in splitters:
