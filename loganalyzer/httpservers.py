@@ -1,14 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from multiprocessing import Process
+'''
+Esse arquivo de fonte possui a implementação dos simuladores de HTTP server.
+
+Para simular os servidores são criados 4 processos. A única coisa que eles fazem eh
+executar a função server_function. Essa função eh responsável em ficar criando os
+registro de log fakes.
+
+Antes de começar a simulação eh criado todos os diretórios para execução da aplicação
+'''
+
 import os
 import tempfile
 import logging
 import time
 import datetime
 
-
+#função que eh execudada pelos processor que simular os servidores HTTP
 def server_function(dir, entries, dead):
 	logger = logging.getLogger('log')
 	logger.debug('%s', "Servidor iniciado", extra={'type':'SERVER'})
@@ -31,9 +40,9 @@ def server_function(dir, entries, dead):
 			total_log_files += 1
 		#depois que o arquivo esta ok, torna ele visivel para ser processado
 		os.rename(path + '.' + file_name, path + file_name)
-		logger.debug(path + file_name, extra={'type':'SERVIDOR'})
+ 		logger.debug(path + file_name, extra={'type':'SERVIDOR'})
 
-
+#método que popula um registro de log fake
 def create_log_entry(entry_count):
 	log_entry_template = '@@ip@@ - - [@@time@@ -0300] "GET @@file@@ HTTP/1.1" 200 @@reg@@ "-" "userid=@@cookie@@"'
 	#replace da data e hora
@@ -50,10 +59,10 @@ def create_log_entry(entry_count):
 	else:
 		fake_entry = fake_entry.replace("@@ip@@","192.168.100.002")
 		fake_entry = fake_entry.replace("@@cookie@@","biscoito-do-vanz-2")
-	return fake_entry
+ 	return fake_entry
 
 #Cria os diretórios para simular os servidores
-def create_dir( server_count=4):
+ def create_dir( server_count=4):
 	for server in range(server_count):
 		server_name = "cluster" + os.sep + "server-" + str(server)
 		if not os.path.exists(server_name):
@@ -61,8 +70,6 @@ def create_dir( server_count=4):
 	filter_log_dir = 'cluster' + os.sep + 'server-0/filter'
 	if not os.path.exists(filter_log_dir):
 		os.makedirs(filter_log_dir)
-
-
 
 if __name__ == '__main__':
 	#configura o formato do log utilizado para debug da aplicação
