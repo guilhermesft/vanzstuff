@@ -22,58 +22,6 @@ import sets
 import logging
 import Queue
 import tempfile
-import shutil
-
-#Thread que simula um servidor HTTP lançando logs
-class HTTPServer(threading.Thread):
-
-	def __init__(self, server_dir, entries_log_file=1000):
-		super(HTTPServer, self).__init__()
-		#diretório onde o servidor ira gravar os arquivos de log
-		self.dir = server_dir
-		#total de registros de log em cada arquivo de log
-		self.entries = entries_log_file
-		#flag que indica que a thread deve morrer
-	 	self.dead = False
-
-	def run(self):
-		logger = logging.getLogger('log')
-		logger.debug('%s', "Servidor iniciado", extra={'type':'SERVER'})
-		if not os.path.exists(self.dir):
-			logger.debug('%s', "Diretório não encontrado", extra={'type':'SERVER'})
-			return
-		#pega a quantidade de arqivos de log existente atualmente
-		total_log_files = len(os.listdir(self.dir))
-		log_entry_id = 1;
-		while not self.dead:
-			with tempfile.NamedTemporaryFile(delete=False) as file:
-				for entry in range(self.entries):
-					file.write(self.create_log_entry(log_entry_id))
-					file.write('\n')
-					log_entry_id += 1
-					time.sleep(0.5)
-				shutil.move(file.name, self.dir + os.sep + "log-" + str(total_log_files))
-				total_log_files += 1
-				logger.debug("Novo arquivo de log: %s ", self.dir + os.sep + "log-" + str(total_log_files), extra={'type':'SERVIDOR'})
-
-	#Cria um registro de log fake
-	def create_log_entry(self, entry_count):
-		log_entry_template = '@@ip@@ - - [@@time@@ -0300] "GET @@file@@ HTTP/1.1" 200 @@reg@@ "-" "userid=@@cookie@@"'
-		#replace da data e hora
-		fake_entry = log_entry_template.replace("@@time@@", datetime.datetime.fromtimestamp(time.time()).strftime('%d/%b/%Y:%H:%M:%S'))
-		#replace do arquivo
-		fake_entry = fake_entry.replace("@@file@@","/file" + str(entry_count))
-		#replace do registro
-		fake_entry = fake_entry.replace("@@reg@@", str(entry_count))
-		#para teste tesmos somente 2 userid
-		#primeiro fazemos replace do ip e do biscoito
-		if entry_count % 2 == 0:
-			fake_entry = fake_entry.replace("@@ip@@","192.168.100.001")
-			fake_entry = fake_entry.replace("@@cookie@@","biscoito-do-vanz-1")
-		else:
-			fake_entry = fake_entry.replace("@@ip@@","192.168.100.002")
-			fake_entry = fake_entry.replace("@@cookie@@","biscoito-do-vanz-2")
-		return fake_entry
 
 #Thread que pega um arquivo de log e quebra em chunk menores para processamento
 class SplitLogFileTask(threading.Thread):
@@ -213,35 +161,13 @@ class OutPutWriter(threading.Thread):
 				continue
 			for userid in input.keys():
 				#abre o arquivo
-				with open(self.output + os.sep + userid, 'w+') as file:
-					for entry in input[userid]:
-				 		file.write(entry)
+				with open(self.output + os.sep + userid, 'a+') as file:
+				 	file.writelines(input[userid])
 					logger.debug('Gravou no arquivo %s', userid, extra=log_stuff)
-
-#Cria os diretórios para simular os servidores
-def create_dir( server_count=4):
-	for server in range(server_count):
-		server_name = "cluster" + os.sep + "server-" + str(server)
-		if not os.path.exists(server_name):
-			os.makedirs(server_name)
-'''	server_name = "cluster" + os.sep + "server-0" + os.sep + 'filter'
-	if not os.path.exists(server_name):
-		os.makedirs(server_name)'''
-
-
-
 
 #configura o formato do log utilizado para debug da aplicação
 FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
 logging.basicConfig(filename='log',format=FORMAT, level=logging.DEBUG)
-
-create_dir(4)
-#threads que simulam servidor http
-servers = []
-servers.append(HTTPServer('cluster/server-0', 1000))
-servers.append(HTTPServer('cluster/server-1', 1000))
-servers.append(HTTPServer('cluster/server-2', 1000))
-servers.append(HTTPServer('cluster/server-3', 1000))
 
 #objetos de lock de acesso aos diretórios
 dir_lock_0 = threading.Lock()
@@ -259,17 +185,17 @@ files_done_set_3 = sets.Set()
 splits_queue = Queue.Queue()
 #thread que vão dar quebrar os arquivos de log
 splitters = []
-splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
-splitters.append(SplitLogFileTask(servers[0].dir, dir_lock_0, splits_queue, files_done_set_0))
+splitters.append(SplitLogFileTask('cluster/server-0', dir_lock_0, splits_queue, files_done_set_0))
+splitters.append(SplitLogFileTask('cluster/server-0', dir_lock_0, splits_queue, files_done_set_0))
 
-splitters.append(SplitLogFileTask(servers[1].dir, dir_lock_1, splits_queue, files_done_set_1))
-splitters.append(SplitLogFileTask(servers[1].dir, dir_lock_1, splits_queue, files_done_set_1))
+splitters.append(SplitLogFileTask('cluster/server-1', dir_lock_1, splits_queue, files_done_set_1))
+splitters.append(SplitLogFileTask('cluster/server-1', dir_lock_1, splits_queue, files_done_set_1))
 
-splitters.append(SplitLogFileTask(servers[2].dir, dir_lock_2, splits_queue, files_done_set_2))
-splitters.append(SplitLogFileTask(servers[2].dir, dir_lock_2, splits_queue, files_done_set_2))
+splitters.append(SplitLogFileTask('cluster/server-2', dir_lock_2, splits_queue, files_done_set_2))
+splitters.append(SplitLogFileTask('cluster/server-2', dir_lock_2, splits_queue, files_done_set_2))
 
-splitters.append(SplitLogFileTask(servers[3].dir, dir_lock_3, splits_queue, files_done_set_3))
-splitters.append(SplitLogFileTask(servers[3].dir, dir_lock_3, splits_queue, files_done_set_3))
+splitters.append(SplitLogFileTask('cluster/server-3', dir_lock_3, splits_queue, files_done_set_3))
+splitters.append(SplitLogFileTask('cluster/server-3', dir_lock_3, splits_queue, files_done_set_3))
 
 chunk_processed = Queue.Queue()
 processors = []
@@ -282,8 +208,6 @@ writers = []
 writers.append(OutPutWriter(chunk_processed,os.getcwd()))
 
 
-for server in servers:
-	server.start()
 for splitter in splitters:
 	splitter.start()
 for processor in processors:
@@ -291,12 +215,7 @@ for processor in processors:
 for writer in writers:
 	writer.start()
 
-#para e espera as thread dos servidores finalizar
-for server in servers:
-	server.dead = True
-for server in servers:
-	server.join()
-print "Servers thread finalizadas"
+time.sleep(300)
 
 #para todas as thread de splitt
 for splitter in splitters:

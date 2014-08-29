@@ -32,7 +32,6 @@ def server_function(dir, entries, dead):
 		#depois que o arquivo esta ok, torna ele visivel para ser processado
 		os.rename(path + '.' + file_name, path + file_name)
 		logger.debug(path + file_name, extra={'type':'SERVIDOR'})
-		return
 
 
 def create_log_entry(entry_count):
@@ -67,15 +66,15 @@ if __name__ == '__main__':
 	FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
 	logging.basicConfig(filename='log-server',format=FORMAT, level=logging.DEBUG)
 
-	total_servers = 1
+	total_servers = 4
 
 	create_dir(total_servers)
 	dead = False
 	servers = [];
-	servers.append(Process(target=server_function, args=('cluster/server-0', 100, dead)))
-#	servers.append(Process(target=server_function, args=('cluster/server-1', 10000, dead)))
-#	servers.append(Process(target=server_function, args=('cluster/server-2', 10000, dead)))
-#	servers.append(Process(target=server_function, args=('cluster/server-3', 10000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-0', 1000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-1', 1000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-2', 1000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-3', 1000, dead)))
 	for server in range(total_servers):
 		servers[server].start()
 
