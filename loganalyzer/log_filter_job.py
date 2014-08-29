@@ -175,6 +175,9 @@ class OutPutWriter(threading.Thread):
 FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
 logging.basicConfig(filename='log',format=FORMAT, level=logging.DEBUG)
 
+#BUG! Conforme dito aqui: http://bugs.python.org/issue7980
+time.strptime('15/Aug/2013:13:54:38', '%d/%b/%Y:%H:%M:%S')
+
 #objetos de lock de acesso aos diretórios
 dir_lock_0 = threading.Lock()
 dir_lock_1 = threading.Lock()
