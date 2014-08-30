@@ -5,12 +5,13 @@
 Esse arquivo de fonte possui a implementação dos simuladores de HTTP server.
 
 Para simular os servidores são criados 4 processos. A única coisa que eles fazem eh
-executar a função server_function. Essa função eh responsável em ficar criando os
-registro de log fakes.
+executar a função server_function. Essa função eh responsável em criar diversos
+registros de log fakes.
 
 Antes de começar a simulação eh criado todos os diretórios para execução da aplicação
 '''
 
+from multiprocessing import Process, Value
 import os
 import tempfile
 import logging
@@ -26,7 +27,7 @@ def server_function(dir, entries, dead):
 		return
 	#pega a quantidade de arqivos de log existente atualmente
 	total_log_files = len(os.listdir(dir))
-	while not dead:
+	while not dead.value == 1:
 		#nome final do arquivo de log
 		file_name = "log-" + str(total_log_files)
 		#path do diretório do log, com a barra
@@ -36,7 +37,6 @@ def server_function(dir, entries, dead):
 			for entry in range(entries):
 				file.write(create_log_entry(entry))
 				file.write('\n')
-				time.sleep(0.05)
 			total_log_files += 1
 		#depois que o arquivo esta ok, torna ele visivel para ser processado
 		os.rename(path + '.' + file_name, path + file_name)
@@ -62,7 +62,7 @@ def create_log_entry(entry_count):
  	return fake_entry
 
 #Cria os diretórios para simular os servidores
- def create_dir( server_count=4):
+def create_dir( server_count=4):
 	for server in range(server_count):
 		server_name = "cluster" + os.sep + "server-" + str(server)
 		if not os.path.exists(server_name):
@@ -75,16 +75,23 @@ if __name__ == '__main__':
 	#configura o formato do log utilizado para debug da aplicação
 	FORMAT = '%(asctime)-15s %(type)s %(thread)d %(message)s'
 	logging.basicConfig(filename='log-server',format=FORMAT, level=logging.DEBUG)
-
+	#total de servidores simulados
 	total_servers = 4
 
 	create_dir(total_servers)
-	dead = False
+	dead = Value('i', 0)
 	servers = [];
-	servers.append(Process(target=server_function, args=('cluster/server-0', 1000, dead)))
-	servers.append(Process(target=server_function, args=('cluster/server-1', 1000, dead)))
-	servers.append(Process(target=server_function, args=('cluster/server-2', 1000, dead)))
-	servers.append(Process(target=server_function, args=('cluster/server-3', 1000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-0', 500000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-1', 500000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-2', 500000, dead)))
+	servers.append(Process(target=server_function, args=('cluster/server-3', 500000, dead)))
 	for server in range(total_servers):
 		servers[server].start()
+	#roda por 6 horas
+	time.sleep(10800*2)
+	dead.value = 1
+	for server in range(total_servers):
+		servers[server].join()
 
+	logger = logging.getLogger('log')
+	logger.debug('%s', "Todos os servidores forem finalizados", extra={'type':'SERVER'})
