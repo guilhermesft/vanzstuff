@@ -87,8 +87,7 @@ if __name__ == '__main__':
 	servers.append(Process(target=server_function, args=('cluster/server-3', 500000, dead)))
 	for server in range(total_servers):
 		servers[server].start()
-	#roda por 6 horas
-	time.sleep(10800*2)
+	time.sleep(900)
 	dead.value = 1
 	for server in range(total_servers):
 		servers[server].join()

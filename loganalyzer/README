@@ -1,0 +1,49 @@
+Dentro deste bundle estão todos os fontes que implementei para resolver o desafio que foi enviado. Segue descrição do que
+cada arquivo faz.
+
+Algumas informações que podem ser uteis...
+	Todos os testes foram feitos em Fedora. Se for rodar em alguma coisa e der algum problema devido a isso e
+	precisarem que resolva o problema, me avisem. Devido a algumas diferenças na implementação do shell script
+	variar um pouco em cada distro ( jah tive problemas com isso... =/ ), podem ocorrer problemas nos script de
+	buid que não tive como testar. Mas creio que não ver ter stress
+
+O output do algoritmo eh feita em: cluster/server-0/filter
+
+Neste bundle são encontrados:
+
+-> httpserver.py : Implementação de servidor HTTP para criação de log fakes para teste. Nesse código são criados 4
+processor para simular os servidores http criando logs fakes em diferentes pastas. Eh esse script que cria a estrutura
+de diretório usada pela aplicação. Que eh:
+	/
+	cluster/
+		server-0/
+			<logs>
+			filter/
+				<arquivos dos logs separados por user id>
+		server-1/
+			<logs>
+		server-2/
+			<logs>
+		server-3/
+			<logs>
+
+-> log_filter_job.py : Código que filtra os logs gerados pelos servidores http. Dentro do código fonte está descrito
+as etapas e o funcionamento de cada uma delas.
+
+-> LogFilter.java : Fonte java onde comecei a fazer um MapReduce job no Hadoop para fazer o solicitado. Mas não
+foi totalmente terminado
+	Problemas conhecidos:
+		* O arquivos ficar na ordem inversar ( as datas mais antigas ficam no final do arquivo )
+		* A key do job eh gravada no inicio de cada arquivo
+		* Algo de estranho nos registros gravados. O final dos registro de log ficam repetido
+
+-> go-hadoop.sh : Script shell para preparar os diretórios, compilar e rodar o mapreduce job
+
+-> go-python.sh : Script shell para preparar os diretórios e executar a aplicação
+
+-> log_filter_job_v2.py : Depois de um tempo, percebi que a abordagem que estava tendo na implementação de python onde carregava
+e quebrava o arquivo tudo em memória, talvez não fosse a melhor ideia. Por isso, comecei uma segunda implementação. Mas que infelizmente
+não ficou pronta a tempo. Nela eu quebro o arquivo de log em varias parte e gravo arquivos menores para posterior
+processamento. Assim o consumo de memória diminui
+
+Qualquer dúvida: guilherme.sft@gmail.com

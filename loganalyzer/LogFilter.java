@@ -28,18 +28,24 @@ import org.apache.hadoop.mapred.lib.MultipleTextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+
+/** Hadoop MapReduce para fazer o filtro do log proposto no exercíco.
+ */
 public class LogFilter extends Configured implements Tool {
 
 	/* Regex usada para pegar o valor do cookie no registro do log */
 	private static final Pattern REGEX_COOKIE = Pattern.compile("\"userid=(?<biscoito>.+)\"");
 	/* Regex usada para pegar a data de cada registro de log */
 	private static final Pattern REGEX_DATA = Pattern.compile("(?<date>\\d{2}/\\w{3}/\\d{4}:\\d{2}:\\d{2}:\\d{2})");
-	
+
 	/**
 	 * Classe responsável pela parte de Map do job
 	 */
 	public static class LogMapper extends MapReduceBase implements Mapper<LongWritable, Text, Text, Text> {
 
+		/** Método de map que pega a informada como Inputsplit e extrai o userid.
+		 * O userid extraido eh a chave da saída do map e o valor eh a própia linha do log
+		 * */
 		@Override
 		public void map(LongWritable key, Text value, OutputCollector<Text, Text> output, Reporter reporter) throws IOException {
 			Matcher matcherCookie = REGEX_COOKIE.matcher(value.toString());
@@ -72,23 +78,29 @@ public class LogFilter extends Configured implements Tool {
 		}
 	}
 
+	/** Classe utilizada para definir o nome dos arquivos de saída.
+	 * O nome de saída deve ser o userid, logo a nome do arquivo eh igual a key
+	 */
 	public static class MultipleFileOutput extends MultipleTextOutputFormat<Text, Text> {
 
 		@Override
 		protected String generateFileNameForKeyValue(Text key, Text value, String name) {
 			return key.toString();
 		}
-		
+
 	}
 
-	
+	/** Comparator criado para que serja ordernado os registro pela data
+	 */
 	public static class LogFilterValueComparator implements RawComparator<Text> {
 
 		@Override
 		public int compare(Text o1, Text o2) {
+			//vamos pegar as datas dos dois registros
 			Matcher matcherO1 = REGEX_DATA.matcher(o1.toString());
 			Matcher matcherO2 = REGEX_DATA.matcher(o2.toString());
 			if (matcherO1.find() && matcherO2.find()) {
+				//se conseguiu pegar as duas data, vamos ver quem vem antes de quem
 				SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss");
 				try {
 					Date d1 = dateFormat.parse(matcherO1.group("data"));
@@ -96,9 +108,11 @@ public class LogFilter extends Configured implements Tool {
 					return d2.compareTo(d1);
 				} catch (ParseException e) {
 					e.printStackTrace();
+					//deixa como esta
 					return 0;
 				}
 			}
+			//well... deixa como estão então
 			return 0;
 		}
 
@@ -111,36 +125,15 @@ public class LogFilter extends Configured implements Tool {
 			}
 		}
 	}
-	
-	public static class MyTextArrayWritable extends ArrayWritable{
-		
-		private String[] entries;
 
-		public MyTextArrayWritable(String[] entries) {
-			super(Text.class);
-			this.entries = entries;
-		}
-
-		
-		public String toString() {
-			StringBuilder builder = new StringBuilder();
-			ResettableIterator it = IteratorUtils.arrayIterator(entries);
-			while(it.hasNext()){
-				builder.append((String)it.next());
-				builder.append(System.lineSeparator());
-			}
-			return builder.toString();
-		}
-		
-	}
-	
 	@Override
 	public int run(String[] args) throws Exception {
+		//configura todos os paranaue necessário para o job
 		JobConf job = new JobConf(getConf(), LogFilter.class);
 		job.setJobName("logfilter");
 		for (int i =0 ;i <= args.length-2; i++) {
 			FileInputFormat.addInputPath(job, new Path(args[i]));
-			
+
 		}
 		FileOutputFormat.setOutputPath(job, new Path(args[args.length-1]));
 		job.setMapperClass(LogFilter.LogMapper.class);
@@ -151,6 +144,7 @@ public class LogFilter extends Configured implements Tool {
 		job.setOutputValueClass(Text.class);
 		job.setOutputFormat(MultipleFileOutput.class);
 		job.setOutputKeyClass(Text.class);
+		//roda o job
 		JobClient.runJob(job);
 		return 0;
 	}
