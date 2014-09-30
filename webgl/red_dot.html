@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta content="text/html; charset=utf-8" http-equiv="Content-Type"></meta>
+		<title>WebGL - Sample 1</title>
+		<script type="text/javascript">
+
+			var vertexShader;
+			var fragmentShader;
+			var program;
+
+			function start(){
+				var canvas = document.getElementById("canvas");
+				var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+				if( !gl ) throw new Error("Your browser does not support webgl");
+				vertexShader = getShader(gl, "shader-vertex");
+				fragmentShader = getShader(gl, "shader-fragment");
+
+				program = link(gl, vertexShader, fragmentShader);
+				gl.useProgram(program);
+				var aPosition = gl.getAttribLocation(program, 'aPosition');
+				var uFragColor = gl.getUniformLocation(program, 'uFragColor');
+
+				gl.vertexAttrib2f(aPosition, 0.0, 0.0);
+				gl.uniform4f(uFragColor, 1.0, 0.0, 0.0, 1.0);
+
+				gl.clearColor(0.0, 0.0, 0.0, 1.0);
+				gl.clear(gl.COLOR_BUFFER_BIT);
+				gl.drawArrays(gl.POINTS, 0, 1);
+			}
+
+			function compile(gl, type, shaderSrc){
+				var shader = gl.createShader(type);
+				gl.shaderSource(shader, shaderSrc);
+				gl.compileShader(shader);
+
+				if( !gl.getShaderParameter(shader, gl.COMPILE_STATUS)){
+					throw new Error(gl.getShaderInfoLog(shader));
+				}
+				return shader;
+			};
+
+			function link(gl, vertexShader, fragmentShader){
+				var program = gl.createProgram();
+				gl.attachShader(program, vertexShader);
+				gl.attachShader(program, fragmentShader);
+				gl.linkProgram(program);
+
+				if( !gl.getProgramParameter(program, gl.LINK_STATUS)){
+					throw new Error(gl.getProgramInfoLog(program));
+				}
+				return program;
+			};
+
+			function getShader(gl, id){
+				var shaderScript = document.getElementById(id);
+				if(!shaderScript){
+					return null;
+				}
+				var theSource = "";
+				var currentChild = shaderScript.firstChild;
+				while(currentChild){
+					if(currentChild.nodeType == currentChild.TEXT_NODE){
+						theSource += currentChild.textContent;
+					}
+					currentChild = currentChild.nextSibling;
+				}
+				var shader;
+				if(shaderScript.type == "x-shader/x-fragment"){
+					shader = gl.createShader(gl.FRAGMENT_SHADER);
+				} else if(shaderScript.type == "x-shader/x-vertex"){
+					shader = gl.createShader(gl.VERTEX_SHADER);
+				} else {
+					return null;
+				}
+				gl.shaderSource(shader, theSource);
+				gl.compileShader(shader);
+				if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)){
+					alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(shader));
+					return null;
+				}
+				return shader;
+
+			}
+
+
+		</script>
+		<script id="shader-vertex" type="x-shader/x-vertex">
+			attribute vec4 aPosition;
+			void main(){
+				gl_Position = aPosition;
+				gl_PointSize = 10.0;
+			}
+		</script>
+		<script id="shader-fragment" type="x-shader/x-fragment">
+			precision mediump float;
+			uniform vec4 uFragColor;
+			void main(){
+				gl_FragColor = uFragColor;
+			}
+		</script>
+		</head>
+		<body onload="start()">
+		<canvas id="canvas" width="500" height="500">Ooops</canvas>
+		</body>
+</html>
