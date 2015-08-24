@@ -15,6 +15,8 @@ memalloc:
 memalloc-exec:
 	$(output_dir)
 	$(CC) -o $(PWD)/bin/free_and_sbrk-exec $(LIB_SRC) memalloc/exec/exec-7-1.c
+	$(CC) -c memalloc/exec/memalloc.c
+
 
 output_dir:
 	@rm -rf $(OUTPUT_DIR)
