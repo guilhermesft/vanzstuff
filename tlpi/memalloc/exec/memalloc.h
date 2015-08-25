@@ -1,8 +1,6 @@
 #ifndef _MEMALLOC_HEADER
 #define  _MEMALLOC_HEADER
 
-#include <unistd.h>
-
 /**
  * Allocates a block of memory with bytes of length
  * @returns a pointer to the allocated block of memory. Return NULL in error
