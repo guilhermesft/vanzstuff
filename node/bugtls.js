@@ -1,4 +1,4 @@
-var native = require("./native/build/Release/xmlsec");
+var native = require("./native/build/Release/xmlsecnode");
 var restify = require("restify")
 
 console.log(native.hello());
