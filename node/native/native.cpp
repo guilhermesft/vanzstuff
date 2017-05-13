@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include <node.h>
 
 #include <xmlsec/xmlsec.h>
@@ -12,33 +14,42 @@ using v8::Object;
 using v8::String;
 using v8::Value;
 
+using std::cout;
+using std::endl;
+
 
 void Method(const FunctionCallbackInfo<Value>& args) {
 	Isolate* isolate = args.GetIsolate();
 
 	/* Init xmlsec library */
 	if(xmlSecInit() < 0) {
-		fprintf(stderr, "Error: xmlsec initialization failed.\n");
+		cout << "Error: xmlsec initialization failed" << endl;
 		return;
 	}
 
 	/* Check loaded library version */
 	if(xmlSecCheckVersion() != 1) {
-		fprintf(stderr, "Error: loaded xmlsec library version is not compatible.\n");
+		cout << "Error: loaded xmlsec library version is not compatible" << endl;
 		return;
 	}
 
 	/* Init crypto library */
 	if(xmlSecCryptoAppInit(NULL) < 0) {
-		fprintf(stderr, "Error: crypto initialization failed.\n");
+		cout << "Error: crypto initialization failed" << endl;
 		return;
 	}
 
 	/* Init xmlsec-crypto library */
 	if(xmlSecCryptoInit() < 0) {
-		fprintf(stderr, "Error: xmlsec-crypto initialization failed.\n");
+		cout << "Error: xmlsec-crypto initialization failed" << endl;
 		return;
 	}
+	args.GetReturnValue().Set(String::NewFromUtf8(isolate, "hello world"));
+}
+
+
+void Shutdown(const FunctionCallbackInfo<Value>& args) {
+	Isolate* isolate = args.GetIsolate();
 
 	/* Shutdown xmlsec-crypto library */
 	xmlSecCryptoShutdown();
@@ -48,12 +59,11 @@ void Method(const FunctionCallbackInfo<Value>& args) {
 
 	/* Shutdown xmlsec library */
 	xmlSecShutdown();
-
-	args.GetReturnValue().Set(String::NewFromUtf8(isolate, "world"));
 }
 
 void init(Local<Object> exports) {
 	NODE_SET_METHOD(exports, "hello", Method);
+	NODE_SET_METHOD(exports, "shutdown", Shutdown);
 }
 
 NODE_MODULE(addon, init)
