@@ -9,7 +9,7 @@
 		],
 		"defines": ["XMLSEC_CRYPTO_OPENSSL"],
 		"link_settings": {
-			"libraries": ['-lxmlsec1 -lxmlsec1-openssl'],
+			"libraries": ['-lxmlsec1 -lxmlsec1-openssl -lxslt'],
 		},
 	}]
 }
